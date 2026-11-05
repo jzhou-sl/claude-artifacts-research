@@ -1,3 +1,10 @@
 {
-  "Microsoft 365": { "command": "node", "args": ["mock-mcp/server.js"] }
+  "Microsoft 365": {
+    "command": "node",
+    "args": ["teams-mcp/server.js"],
+    "env": {
+      "GRAPH_TENANT_ID": "<your Directory (tenant) ID>",
+      "GRAPH_CLIENT_ID": "<your Application (client) ID>"
+    }
+  }
 }

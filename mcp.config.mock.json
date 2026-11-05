@@ -1,0 +1,3 @@
+{
+  "Microsoft 365": { "command": "node", "args": ["mock-mcp/server.js"] }
+}

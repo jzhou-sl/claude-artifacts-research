@@ -23,7 +23,9 @@ const PORT = Number(process.env.PORT) || 5173;
 const HOST = "127.0.0.1";
 const DEFAULT_PAGE = process.env.DEFAULT_PAGE || "teams-slack-style.html";
 const SHIM_PATH = path.join(ROOT, "shim", "claude-shim.js");
-const config = JSON.parse(await readFile(path.join(ROOT, "mcp.config.json"), "utf8"));
+const CONFIG_FILE = process.env.MCP_CONFIG || "mcp.config.json";
+const config = JSON.parse(await readFile(path.join(ROOT, CONFIG_FILE), "utf8"));
+const ALLOWED_ORIGINS = new Set([`http://127.0.0.1:${PORT}`, `http://localhost:${PORT}`]);
 
 /* ---------- MCP clients (lazy, reconnect after failure) ---------- */
 const clients = new Map(); // server name -> Promise<Client>
@@ -72,6 +74,11 @@ async function callTool({ server, tool, input }) {
   const result = await client.callTool({ name: tool, arguments: input && typeof input === "object" ? input : {} });
   if (result.isError) {
     const msg = (result.content || []).filter((b) => b.type === "text").map((b) => b.text).join(" ").slice(0, 500);
+    // servers may report a window.claude error code directly: structuredContent { code, message, retryable, retryAfterMs }
+    const sc = result.structuredContent;
+    if (sc && typeof sc.code === "string") {
+      throw new BridgeError(sc.code, String(sc.message || msg), { retryable: !!sc.retryable, ...(sc.retryAfterMs ? { retryAfterMs: Number(sc.retryAfterMs) } : {}) });
+    }
     // the SDK reports invalid arguments / unknown tools as isError results carrying the JSON-RPC code
     if (/^MCP error -32602\b/.test(msg)) throw new BridgeError("bad_request", msg, { retryable: false });
     throw new BridgeError("tool_error", msg || "Tool reported an error", { retryable: false });
@@ -96,7 +103,10 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
   try {
     if (req.method === "POST" && url.pathname === "/__mcp/call") {
-      // only accept same-origin JSON calls
+      // tools can send real messages: refuse calls from any other origin (other local sites, file:// pages)
+      const origin = req.headers.origin;
+      if (origin && !ALLOWED_ORIGINS.has(origin)) return json(res, 403, { ok: false, error: { code: "blocked_by_policy", message: `Origin ${origin} not allowed` } });
+      // only accept JSON calls (forces a CORS preflight for cross-origin requests)
       if (!/^application\/json/.test(req.headers["content-type"] || "")) return json(res, 415, { ok: false, error: { code: "bad_request", message: "JSON only" } });
       let payload;
       try { payload = JSON.parse(await readBody(req)); } catch { return json(res, 400, { ok: false, error: { code: "bad_request", message: "Invalid JSON" } }); }
@@ -133,7 +143,7 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`Dev server: http://${HOST}:${PORT}/  (MCP servers: ${Object.keys(config).join(", ")})`);
+  console.log(`Dev server: http://${HOST}:${PORT}/  (${CONFIG_FILE}: ${Object.keys(config).join(", ")})`);
 });
 
 const shutdown = async () => {
