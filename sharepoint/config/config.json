@@ -1,0 +1,16 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/config.2.0.schema.json",
+  "version": "2.0",
+  "bundles": {
+    "teams-slack-web-part": {
+      "components": [
+        {
+          "entrypoint": "./lib/webparts/teamsSlack/TeamsSlackWebPart.js",
+          "manifest": "./src/webparts/teamsSlack/TeamsSlackWebPart.manifest.json"
+        }
+      ]
+    }
+  },
+  "externals": {},
+  "localizedResources": {}
+}

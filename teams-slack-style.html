@@ -349,6 +349,8 @@ a{color:var(--accent)}
   }
   function explain(e) {
     var c = e && e.code, m = String((e && e.message) || "").slice(0, 200);
+    var help = window.claude && window.claude.help; // host-specific wording (e.g. the SharePoint web part)
+    if (help && c && typeof help[c] === "string") return help[c] + (c === "tool_error" && m ? " " + m : "");
     switch (c) {
       case "needs_reauth": return "Your Microsoft 365 sign-in has lapsed. Reconnect Microsoft 365 in claude.ai Settings → Connectors, then reload this page.";
       case "server_not_connected": return "Microsoft 365 isn’t connected. Add it in claude.ai Settings → Connectors, then reload this page.";

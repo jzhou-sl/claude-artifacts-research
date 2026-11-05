@@ -1,4 +1,4 @@
-// Graph objects -> the shapes teams-slack-style.html reads (same as mock-mcp/fixtures.js).
+// Graph objects -> the shapes teams-slack-style.html reads (same as mock-mcp/fixtures.js). Pure: runs in Node and the browser.
 
 const ENTITIES = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
 export function htmlToText(html) {

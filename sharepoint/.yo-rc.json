@@ -1,0 +1,22 @@
+{
+  "@microsoft/generator-sharepoint": {
+    "whichFolder": "subdir",
+    "solutionName": "sharepoint",
+    "environment": "spo",
+    "packageManager": "npm",
+    "skipFeatureDeployment": true,
+    "useGulp": false,
+    "componentType": "webpart",
+    "template": "none",
+    "componentName": "TeamsSlack",
+    "componentDescription": "Teams, Slack-style: browse and post to Teams from SharePoint",
+    "plusBeta": false,
+    "isCreatingSolution": true,
+    "nodeVersion": "24.22.2",
+    "sdksVersions": {},
+    "version": "1.24.1",
+    "libraryName": "sharepoint",
+    "libraryId": "d3321034-2ae4-42f1-baa2-bc551702567b",
+    "solutionShortDescription": "sharepoint description"
+  }
+}

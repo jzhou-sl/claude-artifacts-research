@@ -7,15 +7,12 @@ import { mkdir } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { AuthError, CHANNEL_READ } from "../teams-core/errors.js";
 
 /** Scopes every user can consent to. Requested at login. */
 export const BASE_SCOPES = ["User.Read", "People.Read", "Team.ReadBasic.All", "Channel.ReadBasic.All", "Chat.ReadWrite", "ChannelMessage.Send"];
-/** Needs admin consent in most tenants. Requested on demand; tools degrade without it. */
-export const CHANNEL_READ = "ChannelMessage.Read.All";
 
-export class AuthError extends Error {
-  constructor(code, message, scope) { super(message); this.code = code; this.scope = scope; }
-}
+export { CHANNEL_READ, AuthError };
 
 /* ---------- config: env first, then the teams-mcp entry in mcp.config.json ---------- */
 function loadConfig() {

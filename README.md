@@ -40,10 +40,48 @@ Open the page and click **Connect Microsoft 365**. Any other `.html` file in thi
 | `shim/claude-shim.js` | Browser shim: `callTool`, `watchTool` (polling), `invalidate`, plus a 30 s read cache |
 | `dev-server.js` | Injects the shim, bridges calls to MCP servers, and rejects calls from other origins |
 | `mcp.config.json` / `mcp.config.mock.json` | Server name → MCP server, for real and mock mode (selected with `MCP_CONFIG`) |
-| `teams-mcp/` | Real server: `server.js` (tools), `graph.js` (Graph client), `map.js` (Graph → page shapes), `auth.js` / `login.js` (MSAL) |
+| `teams-core/` | Environment-neutral tool logic shared by `teams-mcp` and the SharePoint web part: `tools.js` (handlers), `graph.js` (Graph client), `map.js` (Graph → page shapes), `result-error.js` (error mapping) |
+| `teams-mcp/` | Real MCP server: `server.js` (input schemas + registration), `auth.js` / `login.js` (MSAL Node) |
+| `sharepoint/` | SPFx full-page app that hosts the page on SharePoint Online (see below). `host/` holds the web part's mount code; `scripts/codegen.mjs` turns the page and shim into modules |
 | `mock-mcp/` | Mock server with in-memory state, seeded from `fixtures.js` |
 
 Config entries can also point at HTTP MCP servers: `{ "url": "https://…/mcp", "headers": { … } }`.
+
+## SharePoint (intranet hosting)
+
+`sharepoint/` packages the page as an SPFx web part for a **full-page app** on SharePoint Online. There is no Node backend: the web part runs the `teams-core` tool handlers in the browser and calls Microsoft Graph with the visitor's SharePoint sign-in.
+
+```
+SharePoint page ─► SPFx web part ─► iframe (page markup + CSS)
+                        │              └─ page script + shim, run against the iframe's window
+                        └─ teams-core tools ─► Graph (token from SPFx AadTokenProvider)
+```
+
+`teams-slack-style.html` is still the single source. `npm run build` first runs `scripts/prepare.mjs`, which generates `src/generated/` from the page, `shim/` and `teams-core/`. The page's inline script is bundled rather than run inline, so it works under SharePoint's CSP.
+
+**Build** (Node 22/24, about 1.5 GB of free disk for `node_modules`):
+
+```sh
+cd sharepoint
+npm install
+npm run build        # → sharepoint/sharepoint/solution/teams-slack-sharepoint.sppkg
+npm start            # dev: serves to https://<tenant>.sharepoint.com/_layouts/15/workbench.aspx
+```
+
+**Deploy** (needs a SharePoint admin):
+1. Upload the `.sppkg` to the **tenant App Catalog**, and enable it for all sites or for the intranet site only.
+2. **SharePoint admin center → Advanced → API access**: approve the Microsoft Graph requests (`User.Read`, `People.Read`, `Team.ReadBasic.All`, `Channel.ReadBasic.All`, `Chat.ReadWrite`, `ChannelMessage.Send`, `ChannelMessage.Read.All`).
+   ⚠️ These are granted to the tenant-wide *SharePoint Online Client Extensibility* principal, so **every** SPFx solution in the tenant can use them. Visitors post **real Teams messages as themselves**.
+3. Create the page on the intranet site, for example with PnP PowerShell:
+   ```powershell
+   Connect-PnPOnline https://<tenant>.sharepoint.com/sites/<intranet> -Interactive
+   Add-PnPPage -Name "Teams" -LayoutType SingleWebPartAppPage
+   Add-PnPPageWebPart -Page "Teams" -Component "Teams, Slack-style"
+   Set-PnPPage -Identity "Teams" -Publish
+   ```
+   Then add the page to the site navigation.
+
+Until the API access is approved, the page shows a "SharePoint admin needs to approve…" message instead of loading. If only `ChannelMessage.Read.All` is missing, channels report that permission, while chats and sending still work.
 
 ## Environment variables
 

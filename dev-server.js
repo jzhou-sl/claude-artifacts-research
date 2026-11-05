@@ -17,6 +17,7 @@ import { fileURLToPath } from "node:url";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { resultError } from "./teams-core/result-error.js";
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT) || 5173;
@@ -26,7 +27,6 @@ const SHIM_PATH = path.join(ROOT, "shim", "claude-shim.js");
 const CONFIG_FILE = process.env.MCP_CONFIG || "mcp.config.json";
 const config = JSON.parse(await readFile(path.join(ROOT, CONFIG_FILE), "utf8"));
 const ALLOWED_ORIGINS = new Set([`http://127.0.0.1:${PORT}`, `http://localhost:${PORT}`]);
-
 /* ---------- MCP clients (lazy, reconnect after failure) ---------- */
 const clients = new Map(); // server name -> Promise<Client>
 
@@ -73,15 +73,8 @@ async function callTool({ server, tool, input }) {
   catch (e) { throw new BridgeError("server_unavailable", `Couldn't start "${server}": ${e.message}`, { retryable: true, retryAfterMs: 1500 }); }
   const result = await client.callTool({ name: tool, arguments: input && typeof input === "object" ? input : {} });
   if (result.isError) {
-    const msg = (result.content || []).filter((b) => b.type === "text").map((b) => b.text).join(" ").slice(0, 500);
-    // servers may report a window.claude error code directly: structuredContent { code, message, retryable, retryAfterMs }
-    const sc = result.structuredContent;
-    if (sc && typeof sc.code === "string") {
-      throw new BridgeError(sc.code, String(sc.message || msg), { retryable: !!sc.retryable, ...(sc.retryAfterMs ? { retryAfterMs: Number(sc.retryAfterMs) } : {}) });
-    }
-    // the SDK reports invalid arguments / unknown tools as isError results carrying the JSON-RPC code
-    if (/^MCP error -32602\b/.test(msg)) throw new BridgeError("bad_request", msg, { retryable: false });
-    throw new BridgeError("tool_error", msg || "Tool reported an error", { retryable: false });
+    const { code, message, ...extra } = resultError(result);
+    throw new BridgeError(code, message, extra);
   }
   return result;
 }

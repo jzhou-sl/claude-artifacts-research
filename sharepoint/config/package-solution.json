@@ -1,0 +1,69 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/package-solution.schema.json",
+  "solution": {
+    "name": "teams-slack-sharepoint",
+    "id": "d3321034-2ae4-42f1-baa2-bc551702567b",
+    "version": "1.0.0.0",
+    "includeClientSideAssets": true,
+    "skipFeatureDeployment": true,
+    "developer": {
+      "name": "",
+      "websiteUrl": "",
+      "privacyUrl": "",
+      "termsOfUseUrl": "",
+      "mpnId": "Undefined-1.24.1"
+    },
+    "metadata": {
+      "shortDescription": {
+        "default": "Teams, Slack-style"
+      },
+      "longDescription": {
+        "default": "Browse Teams channels and chats and post as yourself, from a SharePoint page. Calls Microsoft Graph with the visitor's own sign-in."
+      },
+      "screenshotPaths": [],
+      "videoUrl": "",
+      "categories": []
+    },
+    "features": [
+      {
+        "title": "Teams, Slack-style",
+        "description": "Adds the Teams, Slack-style web part.",
+        "id": "217a244c-02b1-4a76-a9ff-62a8d0811cf5",
+        "version": "1.0.0.0"
+      }
+    ],
+    "webApiPermissionRequests": [
+      {
+        "resource": "Microsoft Graph",
+        "scope": "User.Read"
+      },
+      {
+        "resource": "Microsoft Graph",
+        "scope": "People.Read"
+      },
+      {
+        "resource": "Microsoft Graph",
+        "scope": "Team.ReadBasic.All"
+      },
+      {
+        "resource": "Microsoft Graph",
+        "scope": "Channel.ReadBasic.All"
+      },
+      {
+        "resource": "Microsoft Graph",
+        "scope": "Chat.ReadWrite"
+      },
+      {
+        "resource": "Microsoft Graph",
+        "scope": "ChannelMessage.Send"
+      },
+      {
+        "resource": "Microsoft Graph",
+        "scope": "ChannelMessage.Read.All"
+      }
+    ]
+  },
+  "paths": {
+    "zippedPackage": "solution/teams-slack-sharepoint.sppkg"
+  }
+}

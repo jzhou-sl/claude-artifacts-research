@@ -4,9 +4,18 @@
 //   watchTool(server, tool, input, cb, opts)  -> unsubscribe()
 //   invalidate(server, tool)                  -> Promise<void>
 // Errors are rejected/emitted as plain objects: { code, message, retryable, retryAfterMs }.
-(function () {
+//
+// As a plain <script> (dev-server.js) it installs itself on window, calling the dev server.
+// The SharePoint web part instead calls installClaudeShim(iframeWindow, transport, { help }) with an
+// in-browser transport(server, tool, input) -> Promise<CallToolResult> that throws the same error shape.
+function installClaudeShim(window, transport, options) {
   "use strict";
+  var document = window.document;
+  // timers belong to the target window, so they stop when an embedding iframe is removed
+  var setTimeout = function (f, ms) { return window.setTimeout(f, ms); };
+  var clearTimeout = function (t) { window.clearTimeout(t); };
   if (window.claude && !window.claude.__shim) return; // a real host is present: leave it alone
+  options = options || {};
 
   var ENDPOINT = "/__mcp/call";
   var CACHE_TTL_MS = 30000;        // default reads reuse results this fresh
@@ -34,7 +43,7 @@
   }
 
   /* ---------- transport ---------- */
-  async function rawCall(server, tool, input) {
+  async function fetchCall(server, tool, input) {
     var res;
     try {
       res = await fetch(ENDPOINT, {
@@ -51,6 +60,11 @@
     if (body && body.error) throw body.error;
     if (res.status >= 500) throw err("server_unavailable", "Dev server error " + res.status, { retryable: true, retryAfterMs: 1000 });
     throw err("upstream_error", "Unexpected response " + res.status);
+  }
+  async function rawCall(server, tool, input) {
+    if (!transport) return fetchCall(server, tool, input);
+    try { return await transport(server, tool, input || {}); }
+    catch (e) { throw e && typeof e.code === "string" ? e : err("upstream_error", String(e && e.message || e), { retryable: true, retryAfterMs: 800 }); }
   }
 
   /* ---------- cache + in-flight de-duplication ---------- */
@@ -145,10 +159,12 @@
 
   window.claude = Object.freeze({
     __shim: true,
+    help: options.help || null, // optional host-specific wording for explain() in the page
     use: async function (name) {
       if (name === "mcp") return mcp;
       throw err("capability_disabled", "The local shim only provides the \"mcp\" capability (asked for \"" + name + "\").");
     },
   });
-  console.info("[claude-shim] window.claude installed (mcp via " + ENDPOINT + ")");
-})();
+  console.info("[claude-shim] window.claude installed (mcp via " + (transport ? "in-page transport" : ENDPOINT) + ")");
+}
+if (typeof __CLAUDE_SHIM_NO_AUTO__ === "undefined") installClaudeShim(window, null);
