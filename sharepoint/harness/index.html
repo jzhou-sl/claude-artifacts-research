@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en" data-mode="{{MODE}}" data-graph="{{GRAPH}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SharePoint Harness</title>
+<link rel="stylesheet" href="/sharepoint/harness/harness.css">
+<script type="module" src="/sharepoint/harness/harness.js"></script>
+</head>
+<body>
+<header class="suite" aria-label="Simulated SharePoint header">
+  <span class="waffle" aria-hidden="true">⠿</span>
+  <span class="brand">SharePoint</span>
+  <span class="tag">local harness</span>
+  <span class="grow"></span>
+  <label>Transport
+    <select id="mode">
+      <option value="graph">In-browser Graph (SharePoint path)</option>
+      <option value="bridge">Dev server bridge (MCP)</option>
+    </select>
+  </label>
+  <label class="check"><input id="dark" type="checkbox"> Dark SharePoint theme</label>
+  <button id="remount" type="button">Remount web part</button>
+</header>
+<div class="sitebar"><span class="site">Intranet</span><span class="crumb">Teams</span><span id="status" class="status"></span></div>
+<main id="canvas" aria-label="Web part canvas"></main>
+</body>
+</html>

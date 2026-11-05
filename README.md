@@ -42,7 +42,7 @@ Open the page and click **Connect Microsoft 365**. Any other `.html` file in thi
 | `mcp.config.json` / `mcp.config.mock.json` | Server name → MCP server, for real and mock mode (selected with `MCP_CONFIG`) |
 | `teams-core/` | Environment-neutral tool logic shared by `teams-mcp` and the SharePoint web part: `tools.js` (handlers), `graph.js` (Graph client), `map.js` (Graph → page shapes), `result-error.js` (error mapping) |
 | `teams-mcp/` | Real MCP server: `server.js` (input schemas + registration), `auth.js` / `login.js` (MSAL Node) |
-| `sharepoint/` | SPFx full-page app that hosts the page on SharePoint Online (see below). `host/` holds the web part's mount code; `scripts/codegen.mjs` turns the page and shim into modules |
+| `sharepoint/` | SPFx full-page app that hosts the page on SharePoint Online (see below). `host/` holds the mount code shared by the web part and the local harness (`harness/`, served at `/sharepoint`); `scripts/codegen.mjs` turns the page and shim into modules |
 | `mock-mcp/` | Mock server with in-memory state, seeded from `fixtures.js` |
 
 Config entries can also point at HTTP MCP servers: `{ "url": "https://…/mcp", "headers": { … } }`.
@@ -58,6 +58,14 @@ SharePoint page ─► SPFx web part ─► iframe (page markup + CSS)
 ```
 
 `teams-slack-style.html` is still the single source. `npm run build` first runs `scripts/prepare.mjs`, which generates `src/generated/` from the page, `shim/` and `teams-core/`. The page's inline script is bundled rather than run inline, so it works under SharePoint's CSP.
+
+**Test locally (no SPFx install or tenant needed):** run `npm run dev:mock` or `npm run dev` and open <http://127.0.0.1:5173/sharepoint>. The harness mounts the page with the web part's own code (`sharepoint/host/mount.js`), the generated page and shim modules, and `teams-core`, under a SharePoint-like CSP with no inline script. Any CSP violation is shown in the header bar. The header lets you switch between:
+- **In-browser Graph (SharePoint path):** `teams-core` runs in the browser and calls Graph directly. Only the token source differs from SharePoint: it comes from your `npm run login` via `POST /__sp/token`, which accepts local origins only, instead of SPFx's `AadTokenProvider`. Available with `npm run dev`.
+- **Dev server bridge:** calls go through `/__mcp/call` to the configured MCP server. Use this with `npm run dev:mock` for mock data.
+
+The header also has a **dark SharePoint theme** toggle (simulates a theme with `isInverted`) and a **Remount** button (simulates `onDispose` followed by `render`). Edits to `teams-slack-style.html`, `shim/`, `teams-core/` or `sharepoint/host/` show up on reload.
+
+What the harness can't cover: SPFx's token provider and the admin-approved permission set, SharePoint's real page chrome and CSP, and the `.sppkg` build. Check those in the hosted workbench.
 
 **Build** (Node 22/24, about 1.5 GB of free disk for `node_modules`):
 
