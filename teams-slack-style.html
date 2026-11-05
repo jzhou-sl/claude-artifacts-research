@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Teams, Slack-style</title>
+<style>
+:root{
+  color-scheme: light;
+  --bg:#ffffff; --bg2:#f7f7fa; --hover:#f3f3f8; --text:#1c1b22; --muted:#6a6878; --line:#e3e2ea;
+  --accent:#5b5fc7; --accent-ink:#ffffff; --danger:#b3261e;
+  --notice:#fff4dd; --notice-text:#5c4300; --mention:#e6e7fb; --code:#f1f0f6;
+  --rail:#1d1b3d; --nav:#2a2850; --nav-text:#e2e1f3; --nav-muted:#a3a1cc; --nav-hover:rgba(255,255,255,.09); --nav-active:rgba(255,255,255,.18);
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --bg:#15141c; --bg2:#1b1a24; --hover:#201f2b; --text:#ebe9f3; --muted:#9c99ad; --line:#2b2937;
+    --accent:#8b8ff0; --accent-ink:#14131c; --danger:#ff8a80;
+    --notice:#3a2f12; --notice-text:#f3dca0; --mention:#2a2c57; --code:#23222e;
+    --rail:#12112a; --nav:#1a1833;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --bg:#15141c; --bg2:#1b1a24; --hover:#201f2b; --text:#ebe9f3; --muted:#9c99ad; --line:#2b2937;
+  --accent:#8b8ff0; --accent-ink:#14131c; --danger:#ff8a80;
+  --notice:#3a2f12; --notice-text:#f3dca0; --mention:#2a2c57; --code:#23222e;
+  --rail:#12112a; --nav:#1a1833;
+}
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none!important}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px);background:var(--rail)}
+body{height:100%;margin:0;background:var(--bg);color:var(--text);
+  font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;overflow:hidden}
+button{font:inherit;color:inherit;cursor:pointer}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+#app{height:100%;display:grid;grid-template-rows:48px minmax(0,1fr);position:relative}
+#top{display:flex;align-items:center;gap:12px;padding:0 12px;background:var(--rail);color:var(--nav-text)}
+#burger{display:none;background:none;border:0;color:var(--nav-text);font-size:20px;padding:6px 8px;border-radius:6px}
+#searchWrap{flex:1;display:flex;justify-content:center}
+#search{width:100%;max-width:560px;height:30px;border-radius:8px;border:1px solid rgba(255,255,255,.22);
+  background:rgba(255,255,255,.12);color:#fff;padding:0 12px;font:inherit;font-size:14px}
+#search::placeholder{color:rgba(255,255,255,.65)}
+#search:focus{background:rgba(255,255,255,.2);outline:none;border-color:rgba(255,255,255,.55)}
+#meChip{display:flex;align-items:center;gap:8px;font-size:13px;min-width:0}
+#meChip span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px}
+
+#body{display:grid;grid-template-columns:auto minmax(0,1fr) auto;min-height:0;position:relative}
+#nav{display:flex;min-height:0}
+#rail{width:64px;background:var(--rail);display:flex;flex-direction:column;align-items:center;gap:8px;padding:10px 0;overflow-y:auto;scrollbar-width:none}
+#rail::-webkit-scrollbar{display:none}
+.rbtn{width:42px;height:42px;border-radius:12px;border:2px solid transparent;display:grid;place-items:center;
+  color:#fff;font-weight:700;font-size:14px;background:#3a3868;flex:none;padding:0;transition:border-radius .12s}
+.rbtn:hover{border-radius:16px}
+.rbtn[aria-current="true"]{border-color:#fff}
+.rsep{width:30px;height:1px;background:rgba(255,255,255,.18);flex:none}
+#col{width:252px;background:var(--nav);color:var(--nav-text);display:flex;flex-direction:column;min-height:0}
+.colhead{padding:14px 16px 10px;font-weight:700;font-size:16px;border-bottom:1px solid rgba(255,255,255,.1);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.collist{flex:1;overflow-y:auto;padding:8px 8px 12px;min-height:0}
+.collabel{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--nav-muted);padding:10px 8px 4px}
+.item{display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:none;border:0;color:var(--nav-text);
+  padding:5px 8px;border-radius:6px;min-height:30px}
+.item:hover{background:var(--nav-hover)}
+.item[aria-current="true"]{background:var(--nav-active);color:#fff;font-weight:600}
+.item .hash{color:var(--nav-muted);width:14px;text-align:center;flex:none}
+.item .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.colfilter{margin:8px 8px 0;height:30px;border-radius:6px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);
+  color:#fff;padding:0 10px;font:inherit;font-size:13px;width:calc(100% - 16px)}
+.colfilter::placeholder{color:rgba(255,255,255,.55)}
+.colmsg{padding:10px 8px;color:var(--nav-muted);font-size:13px}
+.linkbtn{background:none;border:0;color:var(--nav-text);text-decoration:underline;padding:4px 8px;font-size:13px}
+.colfoot{display:flex;align-items:center;gap:8px;padding:10px 12px;border-top:1px solid rgba(255,255,255,.1);font-size:13px}
+.colfoot .who{min-width:0}
+.colfoot .who b,.colfoot .who small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.colfoot small{color:var(--nav-muted)}
+
+.av{width:36px;height:36px;border-radius:8px;display:grid;place-items:center;color:#fff;font-weight:700;font-size:14px;flex:none;user-select:none}
+.av.sm{width:22px;height:22px;font-size:10px;border-radius:6px}
+
+#main{display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--bg)}
+#mhead{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--line);min-height:52px}
+#mhead .title{font-weight:700;font-size:16px;white-space:nowrap}
+#mhead .desc{color:var(--muted);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1}
+#mhead .spacer{flex:1}
+#mhead .status{color:var(--muted);font-size:12px;white-space:nowrap}
+.ibtn{background:none;border:1px solid var(--line);border-radius:6px;padding:4px 10px;font-size:13px;color:var(--text);text-decoration:none;white-space:nowrap}
+.ibtn:hover{background:var(--hover)}
+#notice{margin:10px 16px 0;padding:8px 12px;border-radius:8px;background:var(--notice);color:var(--notice-text);font-size:13px;display:flex;gap:12px;align-items:center}
+#notice .grow{flex:1}
+#notice button{background:none;border:1px solid currentColor;border-radius:6px;padding:2px 10px;font-size:13px}
+#stage{flex:1;min-height:0;position:relative;display:flex;flex-direction:column}
+#msgs{flex:1;overflow-y:auto;padding:8px 0 12px;min-height:0}
+.empty{height:100%;display:grid;place-items:center;text-align:center;color:var(--muted);padding:24px}
+.empty h2{color:var(--text);margin:0 0 6px;font-size:18px}
+.older{display:block;margin:8px auto 4px;background:var(--bg2);border:1px solid var(--line);border-radius:999px;padding:4px 14px;font-size:13px}
+.day{display:flex;align-items:center;gap:12px;margin:14px 16px 6px;color:var(--muted);font-size:12px;font-weight:600}
+.day::before,.day::after{content:"";flex:1;height:1px;background:var(--line)}
+.msg{display:grid;grid-template-columns:36px minmax(0,1fr);gap:10px;padding:4px 16px;position:relative}
+.msg:hover{background:var(--hover)}
+.msg.compact{padding-top:1px;padding-bottom:1px}
+.gutter{font-size:11px;color:transparent;text-align:right;padding-top:3px;user-select:none}
+.msg.compact:hover .gutter{color:var(--muted)}
+.mhead{display:flex;align-items:baseline;gap:8px}
+.mname{font-weight:700}
+.mtime{color:var(--muted);font-size:12px}
+.pending{color:var(--muted);font-size:12px;font-style:italic}
+.subject{font-weight:600;margin-top:2px}
+.mbody{overflow-wrap:anywhere}
+.mbody.plain{white-space:pre-wrap}
+.mbody p{margin:0 0 .5em}
+.mbody p:last-child{margin-bottom:0}
+.mbody ul,.mbody ol{margin:.3em 0;padding-left:1.4em}
+.mbody blockquote{margin:.4em 0;padding-left:10px;border-left:3px solid var(--line);color:var(--muted)}
+.mbody pre,.mbody code{background:var(--code);border-radius:4px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px}
+.mbody pre{padding:8px;overflow-x:auto}
+.mbody table{border-collapse:collapse;display:block;overflow-x:auto;max-width:100%}
+.mbody td,.mbody th{border:1px solid var(--line);padding:3px 8px;vertical-align:top}
+.mbody .mention{background:var(--mention);border-radius:4px;padding:0 3px;font-weight:600}
+.mbody.clamped{max-height:230px;overflow:hidden;-webkit-mask-image:linear-gradient(#000 72%,transparent);mask-image:linear-gradient(#000 72%,transparent)}
+.more{background:none;border:0;color:var(--accent);padding:2px 0;font-size:13px}
+.atts{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.att{border:1px solid var(--line);border-radius:6px;padding:3px 8px;font-size:13px;text-decoration:none;background:var(--bg2);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.trunc{font-size:12px;color:var(--muted);margin-top:4px}
+.acts{position:absolute;right:16px;top:-12px;display:none;gap:2px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:2px}
+.msg:hover .acts,.msg:focus-within .acts{display:flex}
+.acts button,.acts a{background:none;border:0;border-radius:6px;padding:3px 8px;font-size:12px;color:var(--text);text-decoration:none}
+.acts button:hover,.acts a:hover{background:var(--hover)}
+@media (hover:none){.acts{display:flex;position:static;border:0;padding:0;margin-top:4px;background:none}}
+.sysnote{padding:4px 16px;color:var(--muted);font-size:12px}
+
+.composer{margin:0 16px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
+.composer:focus-within{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.composer textarea{display:block;width:100%;border:0;outline:0;resize:none;background:transparent;color:var(--text);font:inherit;padding:10px 12px 4px;max-height:160px}
+.composer .bar{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:4px 8px 8px 12px}
+.composer .hint{color:var(--muted);font-size:12px}
+.composer .send{background:var(--accent);color:var(--accent-ink);border:0;border-radius:6px;padding:5px 14px;font-weight:600}
+.composer .send:disabled{opacity:.5;cursor:default}
+.cerr{padding:2px 12px;color:var(--danger);font-size:13px}
+
+#searchPanel{position:absolute;inset:0;background:var(--bg);overflow-y:auto;padding:12px 16px}
+#searchPanel h3{margin:0 0 10px;font-size:15px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.hit{display:block;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line);padding:10px 4px;color:var(--text)}
+.hit:hover{background:var(--hover)}
+.hit .meta{font-size:12px;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap}
+.hit .meta b{color:var(--text)}
+.hit .snip{margin-top:2px;overflow-wrap:anywhere}
+
+.newbtn{display:flex;align-items:center;gap:8px;width:calc(100% - 16px);margin:8px 8px 0;padding:6px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.1);color:#fff;font-weight:600;font-size:13px}
+.newbtn:hover{background:rgba(255,255,255,.18)}
+.pfield{width:100%;height:36px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--text);padding:0 12px;font:inherit;margin-bottom:8px}
+.person{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line);padding:8px 4px;color:var(--text)}
+.person:hover{background:var(--hover)}
+.person small{display:block;color:var(--muted)}
+.person:disabled{opacity:.5;cursor:default}
+#newpill{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);background:var(--accent);color:var(--accent-ink);border:0;border-radius:999px;padding:6px 14px;font-weight:600;font-size:13px;box-shadow:0 2px 10px rgba(0,0,0,.3);z-index:5}
+.live{display:inline-block;width:8px;height:8px;border-radius:50%;background:#2e9e5b;margin-right:6px}
+.live.off{background:var(--muted)}
+.reacts{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.react{display:inline-flex;align-items:center;gap:2px;border:1px solid var(--line);background:var(--bg2);border-radius:999px;padding:1px 8px;font-size:13px;cursor:default}
+.react.mine{border-color:var(--accent);background:var(--mention)}
+#thread{width:380px;border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0;background:var(--bg)}
+#thread .thead{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--line);font-weight:700;min-height:52px}
+#thread .tlist{flex:1;overflow-y:auto;padding:8px 0;min-height:0}
+#thread .tdiv{margin:6px 16px;color:var(--muted);font-size:12px;display:flex;align-items:center;gap:8px}
+#thread .tdiv::after{content:"";flex:1;height:1px;background:var(--line)}
+
+#gate{position:absolute;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px;z-index:50}
+.gatecard{max-width:430px;text-align:center}
+.gatecard h1{font-size:22px;margin:12px 0 8px}
+.gatecard p{color:var(--muted);margin:0 0 16px}
+.gatecard .big{background:var(--accent);color:var(--accent-ink);border:0;border-radius:8px;padding:9px 20px;font-weight:700;font-size:15px}
+.gatecard .logo{width:56px;height:56px;border-radius:14px;margin:0 auto;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-size:26px}
+.spin{width:22px;height:22px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--accent);animation:sp .8s linear infinite;margin:0 auto}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spin{animation-duration:3s}}
+
+#backdrop{display:none}
+@media (max-width:820px){
+  #body{grid-template-columns:minmax(0,1fr)}
+  #burger{display:block}
+  #meChip span{display:none}
+  #nav{position:absolute;top:0;bottom:0;left:0;z-index:30;transform:translateX(-102%);transition:transform .18s;box-shadow:4px 0 18px rgba(0,0,0,.35)}
+  #app.nav-open #nav{transform:none}
+  #app.nav-open #backdrop{display:block;position:absolute;inset:0;background:rgba(0,0,0,.4);z-index:20}
+  #col{width:min(252px,64vw)}
+  #thread{position:absolute;inset:0;width:100%;z-index:25;border-left:0}
+  #mhead .desc{display:none}
+}
+@media (prefers-reduced-motion:reduce){#nav{transition:none}}
+</style>
+</head>
+<body>
+<div id="app">
+  <header id="top">
+    <button id="burger" type="button" aria-label="Open navigation">☰</button>
+    <div id="searchWrap"><input id="search" type="search" placeholder="Search Teams messages" autocomplete="off" aria-label="Search Teams messages"></div>
+    <div id="meChip"></div>
+  </header>
+  <div id="body">
+    <div id="backdrop"></div>
+    <nav id="nav" aria-label="Teams navigation"><div id="rail"></div><div id="col"></div></nav>
+    <main id="main">
+      <div id="mhead"></div>
+      <div id="notice" hidden></div>
+      <div id="stage"><div id="msgs"></div><div id="searchPanel" hidden></div><button id="newpill" type="button" hidden></button></div>
+      <div id="composerWrap"></div>
+    </main>
+    <aside id="thread" hidden aria-label="Thread"></aside>
+  </div>
+  <div id="gate"></div>
+</div>
+
+<script>
+"use strict";
+(function () {
+  var SERVER = "Microsoft 365";
+  var S = { mcp: null, me: null, mail: "", teams: [], channels: {}, chats: [], chatsCursor: null,
+            chatFilter: "", mode: "chats", teamId: null, thread: null, search: null };
+  var V = null; // current main view (channel or chat)
+  var DENIAL = { needs_reauth: 1, server_not_connected: 1, blocked_by_policy: 1, approval_required: 1,
+                 not_in_manifest: 1, consent_required: 1, selection_required: 1 };
+
+  /* ---------- small helpers ---------- */
+  function $(s, r) { return (r || document).querySelector(s); }
+  function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  function h(tag, props) {
+    var el = document.createElement(tag);
+    if (props) Object.keys(props).forEach(function (k) {
+      var v = props[k];
+      if (v == null || v === false) return;
+      if (k === "class") el.className = v;
+      else if (k === "style") el.style.cssText = v;
+      else if (k.slice(0, 2) === "on") el.addEventListener(k.slice(2), v);
+      else el.setAttribute(k, v === true ? "" : v);
+    });
+    for (var i = 2; i < arguments.length; i++) addKids(el, arguments[i]);
+    return el;
+  }
+  function addKids(el, kid) {
+    if (kid == null || kid === false) return;
+    if (Array.isArray(kid)) { kid.forEach(function (k) { addKids(el, k); }); return; }
+    el.appendChild(kid.nodeType ? kid : document.createTextNode(String(kid)));
+  }
+  function hue(s) { var x = 0; for (var i = 0; i < s.length; i++) x = (x * 31 + s.charCodeAt(i)) >>> 0; return x % 360; }
+  function initials(name) {
+    var parts = String(name || "?").replace(/\(.*?\)/g, "").trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return "?";
+    return ((parts[0][0] || "") + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase();
+  }
+  function avatar(name, small) {
+    return h("div", { class: "av" + (small ? " sm" : ""), style: "background:hsl(" + hue(name || "?") + " 42% 40%)", "aria-hidden": "true" }, initials(name));
+  }
+  function fmtTime(d) { return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); }
+  function dayLabel(d) {
+    var t = new Date(), y = new Date(t); y.setDate(t.getDate() - 1);
+    if (d.toDateString() === t.toDateString()) return "Today";
+    if (d.toDateString() === y.toDateString()) return "Yesterday";
+    var o = { weekday: "long", day: "numeric", month: "long" };
+    if (d.getFullYear() !== t.getFullYear()) o.year = "numeric";
+    return d.toLocaleDateString([], o);
+  }
+
+  /* ---------- result parsing (connector results can be several JSON blocks) ---------- */
+  function splitJson(text) {
+    var out = [], depth = 0, start = -1, inStr = false, esc = false;
+    for (var i = 0; i < text.length; i++) {
+      var c = text[i];
+      if (inStr) { if (esc) esc = false; else if (c === "\\") esc = true; else if (c === '"') inStr = false; continue; }
+      if (c === '"') { if (depth > 0) inStr = true; continue; }
+      if (c === "{" || c === "[") { if (depth === 0) start = i; depth++; }
+      else if (c === "}" || c === "]") { if (depth > 0) { depth--; if (depth === 0 && start >= 0) { out.push(text.slice(start, i + 1)); start = -1; } } }
+    }
+    return out;
+  }
+  function parseResult(r) {
+    var rows = [];
+    var blocks = (r && r.content) || [];
+    blocks.forEach(function (b) {
+      if (!b || b.type !== "text" || !b.text) return;
+      splitJson(b.text).forEach(function (p) {
+        try { var v = JSON.parse(p); if (Array.isArray(v)) rows.push.apply(rows, v); else rows.push(v); } catch (e) {}
+      });
+    });
+    if (!rows.length && r && r.structuredContent) {
+      var s = r.structuredContent;
+      if (Array.isArray(s)) rows.push.apply(rows, s);
+      else if (s && typeof s === "object") {
+        var arr = s.result || s.items || s.value || s.teams || s.chats || s.messages;
+        if (Array.isArray(arr)) rows.push.apply(rows, arr); else rows.push(s);
+      }
+    }
+    return rows;
+  }
+  function splitPage(rows) {
+    var meta = null, out = [];
+    rows.forEach(function (r) {
+      if (r && typeof r === "object" && !r.id && ("moreResults" in r || "nextCursor" in r || "nextOffset" in r)) meta = r; else out.push(r);
+    });
+    return { rows: out, meta: meta };
+  }
+
+  /* ---------- body sanitiser (message HTML comes from other people) ---------- */
+  var ALLOWED = {}; "A B STRONG I EM U S STRIKE P BR DIV SPAN UL OL LI BLOCKQUOTE PRE CODE TABLE THEAD TBODY TR TD TH H1 H2 H3 H4 H5 H6 HR AT".split(" ").forEach(function (t) { ALLOWED[t] = 1; });
+  var DROP = {}; "SCRIPT STYLE IFRAME OBJECT EMBED LINK META IMG SVG FORM INPUT BUTTON TEXTAREA SELECT NOSCRIPT TITLE HEAD ATTACHMENT VIDEO AUDIO".split(" ").forEach(function (t) { DROP[t] = 1; });
+  function sanitize(html) {
+    var doc = new DOMParser().parseFromString(html || "", "text/html");
+    var frag = document.createDocumentFragment();
+    (function walk(src, dst) {
+      Array.prototype.slice.call(src.childNodes).forEach(function (n) {
+        if (n.nodeType === 3) { dst.appendChild(document.createTextNode(n.nodeValue)); return; }
+        if (n.nodeType !== 1) return;
+        var tag = n.tagName.toUpperCase();
+        if (DROP[tag]) return;
+        if (ALLOWED[tag]) {
+          var el;
+          if (tag === "AT") { el = document.createElement("span"); el.className = "mention"; }
+          else el = document.createElement(tag.toLowerCase());
+          if (tag === "A") {
+            var href = n.getAttribute("href") || "";
+            if (/^(https?:|mailto:)/i.test(href)) { el.setAttribute("href", href); el.setAttribute("target", "_blank"); el.setAttribute("rel", "noopener noreferrer"); }
+          }
+          walk(n, el); dst.appendChild(el);
+        } else walk(n, dst);
+      });
+    })(doc.body, frag);
+    return frag;
+  }
+  function plainOf(frag) { var d = document.createElement("div"); d.appendChild(frag); return d.textContent.replace(/\s+/g, " ").trim(); }
+
+  /* ---------- connector calls & errors ---------- */
+  async function read(tool, input, opts) {
+    try { return await S.mcp.callTool(SERVER, tool, input || {}, opts); }
+    catch (e) {
+      if (e && e.retryable && (e.code === "server_unavailable" || e.code === "upstream_error")) {
+        await sleep((e.retryAfterMs || 800) + Math.random() * 400);
+        return await S.mcp.callTool(SERVER, tool, input || {}, opts);
+      }
+      throw e;
+    }
+  }
+  function explain(e) {
+    var c = e && e.code, m = String((e && e.message) || "").slice(0, 200);
+    switch (c) {
+      case "needs_reauth": return "Your Microsoft 365 sign-in has lapsed. Reconnect Microsoft 365 in claude.ai Settings → Connectors, then reload this page.";
+      case "server_not_connected": return "Microsoft 365 isn’t connected. Add it in claude.ai Settings → Connectors, then reload this page.";
+      case "selection_required": return "You have more than one Microsoft 365 connector. Choose the one this page should use when prompted.";
+      case "not_in_manifest": case "consent_required": return "Access to Microsoft 365 wasn’t allowed for this page. Choose Connect to try again.";
+      case "blocked_by_policy": return "Your organisation’s policy blocks this action.";
+      case "approval_required": return "This needs your approval. Try again and choose Allow when asked.";
+      case "server_unavailable": return "Microsoft 365 didn’t respond. Try again in a moment.";
+      case "tool_error": return "Teams reported a problem" + (m ? ": " + m : ".");
+      case "not_granted": case "capability_disabled": case "capability_removed": return "This view can’t reach your connectors. Open the page in claude.ai.";
+      default: return "Something went wrong (" + (c || "unknown") + ")." + (m ? " " + m : "");
+    }
+  }
+  function explainWrite(e) {
+    if (e && (e.code === "server_unavailable" || e.code === "upstream_error"))
+      return "Teams didn’t confirm that the message was sent. Check the conversation before sending it again.";
+    return explain(e);
+  }
+
+  /* ---------- notice / gate ---------- */
+  function notice(msg, actionLabel, action) {
+    var n = $("#notice"); n.hidden = false; n.replaceChildren();
+    n.appendChild(h("span", { class: "grow" }, msg));
+    if (actionLabel) n.appendChild(h("button", { type: "button", onclick: action }, actionLabel));
+    n.appendChild(h("button", { type: "button", "aria-label": "Dismiss", onclick: clearNotice }, "✕"));
+  }
+  function clearNotice() { var n = $("#notice"); n.hidden = true; n.replaceChildren(); }
+  function gate(kind, msg) {
+    var g = $("#gate"); g.hidden = false; g.replaceChildren();
+    var card = h("div", { class: "gatecard" });
+    if (kind === "loading") card.append(h("div", { class: "spin", role: "status", "aria-label": "Loading" }), h("p", { style: "margin-top:12px" }, msg || "Loading…"));
+    else if (kind === "welcome" || kind === "error") {
+      card.append(h("div", { class: "logo", "aria-hidden": "true" }, "💬"),
+        h("h1", null, kind === "error" ? "Couldn’t connect" : "Teams, Slack-style"),
+        h("p", null, kind === "error" ? msg : "Browse your teams, channels and chats and post as yourself, using your own Microsoft 365 connector. Nothing is stored by this page."),
+        h("button", { class: "big", type: "button", onclick: start }, kind === "error" ? "Try again" : "Connect Microsoft 365"));
+    } else {
+      card.append(h("div", { class: "logo", "aria-hidden": "true" }, "🔌"), h("h1", null, "Open in claude.ai"),
+        h("p", null, msg || "This page needs your Microsoft 365 connector, which is only available when it is opened in claude.ai."));
+    }
+    g.appendChild(card);
+  }
+  function hideGate() { $("#gate").hidden = true; }
+
+  /* ---------- boot ---------- */
+  async function boot() {
+    gate("loading", "Loading…");
+    var mcp = null;
+    try { mcp = window.claude ? await window.claude.use("mcp") : null; } catch (e) { mcp = null; }
+    if (!mcp) { gate("unavailable"); return; }
+    S.mcp = mcp;
+    if (lsGet("sl.connected") === "1") start(); else gate("welcome");
+  }
+
+  async function start() {
+    gate("loading", "Connecting to Microsoft 365…");
+    var me;
+    try { me = parseResult(await read("get_me", {}))[0]; if (!me || !me.id) throw { code: "upstream_error", message: "No profile returned" }; }
+    catch (e) { lsSet("sl.connected", "0"); gate("error", explain(e)); return; }
+    S.me = me; S.mail = String(me.mail || me.userPrincipalName || "").toLowerCase();
+    lsSet("sl.connected", "1");
+    $("#meChip").replaceChildren(avatar(me.displayName, true), h("span", null, me.displayName || ""));
+    var results = await Promise.allSettled([read("teams_list_teams", {}), read("teams_list_chats", { limit: 25 })]);
+    hideGate();
+    if (results[0].status === "fulfilled") S.teams = parseResult(results[0].value).filter(function (t) { return t && t.id; });
+    if (results[1].status === "fulfilled") {
+      var pg = splitPage(parseResult(results[1].value));
+      S.chats = pg.rows.filter(function (c) { return c && c.id; });
+      S.chatsCursor = pg.meta && pg.meta.nextCursor || null;
+    }
+    if (results[0].status === "rejected" && results[1].status === "rejected") { gate("error", explain(results[0].reason)); return; }
+    if (results[0].status === "rejected") notice("Couldn’t load your teams. " + explain(results[0].reason));
+    if (results[1].status === "rejected") notice("Couldn’t load your chats. " + explain(results[1].reason));
+    renderRail(); renderCol(); renderEmpty();
+    var last = null; try { last = JSON.parse(lsGet("sl.last") || "null"); } catch (e) {}
+    if (last && last.mode === "team" && S.teams.some(function (t) { return t.id === last.teamId; })) selectTeam(last.teamId, last.channelId);
+    else if (last && last.mode === "chats" && last.chatId) { var c = S.chats.find(function (x) { return x.id === last.chatId; }); if (c) openChat(c); }
+  }
+
+  /* ---------- navigation rendering ---------- */
+  function renderRail() {
+    var rail = $("#rail"); rail.replaceChildren();
+    rail.appendChild(h("button", { class: "rbtn", type: "button", title: "Direct messages and chats", "aria-label": "Direct messages and chats",
+      "aria-current": S.mode === "chats" ? "true" : "false", style: "background:var(--accent);color:var(--accent-ink)", onclick: function () { S.mode = "chats"; renderRail(); renderCol(); } }, "💬"));
+    rail.appendChild(h("div", { class: "rsep" }));
+    S.teams.forEach(function (t) {
+      rail.appendChild(h("button", { class: "rbtn", type: "button", title: t.displayName, "aria-label": t.displayName,
+        "aria-current": S.mode === "team" && S.teamId === t.id ? "true" : "false",
+        style: "background:hsl(" + hue(t.displayName) + " 38% 36%)", onclick: function () { selectTeam(t.id); } }, initials(t.displayName)));
+    });
+  }
+  function chatTitle(c) {
+    if (c.topic) return c.topic;
+    var others = (c.members || []).filter(function (m) { return String(m.email || "").toLowerCase() !== S.mail; });
+    if (!others.length) return (S.me && S.me.displayName ? S.me.displayName : "You") + " (you)";
+    var names = others.map(function (m) { return String(m.displayName || m.email || "").replace(/\s*\(.*?\)/g, ""); });
+    var more = (c.memberCount || 0) - 1 - names.length;
+    return names.join(", ") + (more > 0 ? " +" + more : "");
+  }
+  function renderCol() {
+    var col = $("#col"); col.replaceChildren();
+    var list = h("div", { class: "collist" });
+    if (S.mode === "chats") {
+      col.appendChild(h("div", { class: "colhead" }, "Direct messages"));
+      col.appendChild(h("button", { class: "newbtn", type: "button", onclick: openNewMessage }, "✏️ New message"));
+      var f = h("input", { class: "colfilter", type: "search", placeholder: "Filter chats", "aria-label": "Filter chats", value: S.chatFilter });
+      f.addEventListener("input", function () { S.chatFilter = f.value; renderChatItems(items); });
+      col.appendChild(f);
+      var items = h("div"); list.appendChild(items); renderChatItems(items);
+    } else {
+      var team = S.teams.find(function (t) { return t.id === S.teamId; });
+      col.appendChild(h("div", { class: "colhead", title: team ? team.displayName : "" }, team ? team.displayName : "Team"));
+      var st = S.channels[S.teamId];
+      list.appendChild(h("div", { class: "collabel" }, "Channels"));
+      if (!st || st.loading) list.appendChild(h("div", { class: "colmsg" }, "Loading channels…"));
+      else if (st.error) list.appendChild(h("div", { class: "colmsg" }, explain(st.error)), h("button", { class: "linkbtn", type: "button", onclick: function () { delete S.channels[S.teamId]; selectTeam(S.teamId); } }, "Retry"));
+      else if (!st.list.length) list.appendChild(h("div", { class: "colmsg" }, "No channels."));
+      else st.list.forEach(function (ch) {
+        var cur = V && V.kind === "channel" && V.channelId === ch.id;
+        list.appendChild(h("button", { class: "item", type: "button", "aria-current": cur ? "true" : "false", onclick: function () { selectChannel(S.teamId, ch); } },
+          h("span", { class: "hash" }, "#"), h("span", { class: "t" }, ch.displayName)));
+      });
+    }
+    col.appendChild(list);
+    if (S.me) col.appendChild(h("div", { class: "colfoot" }, avatar(S.me.displayName), h("div", { class: "who" }, h("b", null, S.me.displayName), h("small", null, S.me.mail || S.me.userPrincipalName || ""))));
+  }
+  function renderChatItems(box) {
+    box.replaceChildren();
+    var q = S.chatFilter.trim().toLowerCase();
+    var list = S.chats.filter(function (c) { return !q || chatTitle(c).toLowerCase().indexOf(q) >= 0; });
+    if (!list.length) box.appendChild(h("div", { class: "colmsg" }, S.chats.length ? "No chats match." : "No chats yet."));
+    list.forEach(function (c) {
+      var cur = V && V.kind === "chat" && V.chat.id === c.id;
+      var t = chatTitle(c);
+      box.appendChild(h("button", { class: "item", type: "button", "aria-current": cur ? "true" : "false", onclick: function () { openChat(c); } },
+        avatar(t, true), h("span", { class: "t" }, t)));
+    });
+    if (S.chatsCursor) box.appendChild(h("button", { class: "linkbtn", type: "button", onclick: loadMoreChats }, "Load more chats"));
+  }
+  async function loadMoreChats() {
+    var cur = S.chatsCursor; if (!cur) return;
+    try {
+      var pg = splitPage(parseResult(await read("teams_list_chats", { cursor: cur })));
+      pg.rows.forEach(function (c) { if (c && c.id && !S.chats.some(function (x) { return x.id === c.id; })) S.chats.push(c); });
+      S.chatsCursor = pg.meta && pg.meta.nextCursor || null;
+    } catch (e) { notice("Couldn’t load more chats. " + explain(e)); }
+    renderCol();
+  }
+
+  /* ---------- selecting things ---------- */
+  function closeNav() { $("#app").classList.remove("nav-open"); }
+  function closeView() {
+    if (V) { if (V.stop) V.stop(); if (V.liveStop) V.liveStop(); if (V.timer) clearInterval(V.timer); V.dead = true; }
+    V = null; closeThread(); closeSearch(); clearNotice();
+  }
+  async function selectTeam(teamId, pickChannelId) {
+    S.mode = "team"; S.teamId = teamId; renderRail(); renderCol();
+    if (!S.channels[teamId]) {
+      S.channels[teamId] = { loading: true }; renderCol();
+      try { S.channels[teamId] = { list: parseResult(await read("teams_list_channels", { teamId: teamId })).filter(function (c) { return c && c.id; }) }; }
+      catch (e) { S.channels[teamId] = { error: e }; }
+      if (S.teamId !== teamId) return;
+      renderCol();
+    }
+    var st = S.channels[teamId];
+    if (st.error || !st.list.length) { closeView(); renderHeader(); renderComposer(); renderEmpty(st.error ? explain(st.error) : "This team has no channels you can see."); return; }
+    var ch = st.list.find(function (c) { return c.id === pickChannelId; }) || st.list.find(function (c) { return /^general$/i.test(c.displayName); }) || st.list[0];
+    selectChannel(teamId, ch);
+  }
+  function selectChannel(teamId, ch) {
+    closeView(); closeNav();
+    var view = { kind: "channel", teamId: teamId, channelId: ch.id, name: ch.displayName, desc: ch.description, webUrl: ch.webUrl,
+                 msgs: new Map(), opt: [], cursor: null, cursorInit: false, gotData: false, updated: null, status: "Loading…" };
+    V = view; lsSet("sl.last", JSON.stringify({ mode: "team", teamId: teamId, channelId: ch.id }));
+    renderCol(); renderHeader(); renderComposer(); renderMessages(view, { bottom: true });
+    var input = { teamId: teamId, channelId: ch.id, limit: 30 };
+    startLive(view);
+    view.stop = feed("teams_list_channel_messages", input, function (res) {
+      if (V !== view) return;
+      view.gotData = true; clearNoticeIf("feed"); ingestChannel(view, res); view.status = "Updated " + fmtTime(view.updated);
+      renderHeader(); renderMessages(view, { bottom: !view.rendered });
+    }, function (e) {
+      if (V !== view) return;
+      if (!view.gotData && e.code === "bad_request" && !view.poll) { // live watch unavailable: fall back to polling
+        refreshChannel(view); view.poll = view.timer = setInterval(function () { if (!document.hidden) refreshChannel(view); }, 30000); return;
+      }
+      if (DENIAL[e.code]) { view.msgs.clear(); renderMessages(view, {}); notice(explain(e), "Retry", function () { selectChannel(teamId, ch); }); }
+      else if (!view.gotData) { view.status = ""; renderMessages(view, {}); notice(explain(e), "Retry", function () { selectChannel(teamId, ch); }); }
+      else { view.status = "Couldn’t refresh just now"; renderHeader(); }
+    });
+  }
+  function clearNoticeIf() { /* keep unrelated notices; feed errors are cleared on retry */ }
+  function feed(tool, input, onData, onError) {
+    var dead = false, unsub = null;
+    try {
+      unsub = S.mcp.watchTool(SERVER, tool, input, function (ev) {
+        if (dead) return; if (ev.type === "data") onData(ev.result); else onError(ev.error || { code: "upstream_error" });
+      }, {});
+    } catch (e) { onError({ code: "bad_request", message: String(e) }); }
+    return function () { dead = true; if (unsub) { try { unsub(); } catch (e) {} } };
+  }
+  function ingestChannel(view, res) {
+    var pg = splitPage(parseResult(res));
+    pg.rows.forEach(function (m) { if (m && m.id && m.createdDateTime && !m.deletedDateTime) view.msgs.set(m.id, m); });
+    if (!view.cursorInit) { view.cursor = pg.meta && pg.meta.nextCursor || null; view.cursorInit = true; }
+    view.updated = res && res.cache && res.cache.storedAt ? new Date(res.cache.storedAt) : new Date();
+    pruneOpt(view);
+  }
+  async function refreshChannel(view) {
+    try {
+      var res = await read("teams_list_channel_messages", { teamId: view.teamId, channelId: view.channelId, limit: 30 }, { cache: { refresh: true } });
+      if (V !== view) return; view.gotData = true; ingestChannel(view, res); view.status = "Updated " + fmtTime(view.updated);
+      renderHeader(); renderMessages(view, { bottom: !view.rendered });
+    } catch (e) { if (V !== view) return; if (!view.gotData) notice(explain(e)); else { view.status = "Couldn’t refresh just now"; renderHeader(); } }
+  }
+  async function loadOlderChannel(view) {
+    if (!view.cursor) return;
+    try {
+      var res = await read("teams_list_channel_messages", { teamId: view.teamId, channelId: view.channelId, cursor: view.cursor });
+      var pg = splitPage(parseResult(res));
+      pg.rows.forEach(function (m) { if (m && m.id && m.createdDateTime && !m.deletedDateTime) view.msgs.set(m.id, m); });
+      view.cursor = pg.meta && pg.meta.nextCursor || null;
+      if (V === view) renderMessages(view, { keep: true });
+    } catch (e) { notice("Couldn’t load older messages. " + explain(e)); }
+  }
+
+  /* ---------- chats (history comes from Teams search) ---------- */
+  function sinceDate() { return new Date(Date.now() - 90 * 864e5).toISOString().slice(0, 10); }
+  async function openChat(chat) {
+    closeView(); closeNav(); S.mode = "chats";
+    var others = (chat.members || []).filter(function (m) { return String(m.email || "").toLowerCase() !== S.mail; });
+    var queries = [];
+    if (chat.chatType === "oneOnOne" && others.length === 1) queries = [{ sender: others[0].email }, { sender: S.mail, recipient: others[0].email }];
+    else if (!others.length) queries = [{ sender: S.mail }];
+    else queries = [{ sender: S.mail }].concat(others.slice(0, 7).map(function (m) { return { sender: m.email }; }));
+    var view = { kind: "chat", chat: chat, queries: queries, msgs: new Map(), opt: [], status: "Loading…", loading: true, capped: others.length > 7 };
+    V = view; lsSet("sl.last", JSON.stringify({ mode: "chats", chatId: chat.id }));
+    renderRail(); renderCol(); renderHeader(); renderComposer(); renderMessages(view, { bottom: true });
+    await loadChatPages(view, true);
+    if (V !== view) return;
+    startLive(view);
+  }
+  async function fetchQ(view, q, first) {
+    var input = { query: "*", limit: 25, offset: first ? 0 : q.offset, afterDateTime: sinceDate() };
+    if (q.sender) input.sender = q.sender; if (q.recipient) input.recipient = q.recipient;
+    var pg = splitPage(parseResult(await read("chat_message_search", input, { cache: false })));
+    pg.rows.forEach(function (r) { if (r && r.id && r.chatId === view.chat.id) view.msgs.set(r.id, r); });
+    if (!q.fetched || !first) {
+      q.offset = pg.meta && pg.meta.nextOffset != null ? pg.meta.nextOffset : (first ? 0 : q.offset) + pg.rows.length;
+      q.more = !!(pg.meta && pg.meta.moreResults); q.fetched = true;
+    }
+  }
+  async function loadChatPages(view, initial) {
+    var pending = initial ? view.queries : view.queries.filter(function (q) { return q.more; });
+    var rounds = 0, errs = [];
+    while (pending.length && rounds < (initial ? 3 : 1)) {
+      var res = await Promise.allSettled(pending.map(function (q) { return fetchQ(view, q, initial && !q.fetched); }));
+      res.forEach(function (r) { if (r.status === "rejected") errs.push(r.reason); });
+      if (V !== view) return;
+      pruneOpt(view); view.updated = new Date(); view.loading = false; view.status = "Updated " + fmtTime(view.updated);
+      renderHeader(); renderMessages(view, initial && rounds === 0 ? { bottom: true } : { keep: !initial });
+      rounds++;
+      pending = view.msgs.size < 8 ? view.queries.filter(function (q) { return q.more; }) : [];
+    }
+    view.loading = false;
+    if (errs.length && errs.length >= view.queries.length) { notice(explain(errs[0]), "Retry", function () { openChat(view.chat); }); view.status = ""; renderHeader(); }
+    else if (errs.length) { view.status = "Some results couldn’t load"; renderHeader(); }
+    renderMessages(view, {});
+  }
+  async function pollChat(view) {
+    var res = await Promise.allSettled(view.queries.map(function (q) { return fetchQ(view, q, true); }));
+    if (V !== view) return;
+    var ok = res.some(function (r) { return r.status === "fulfilled"; });
+    if (ok) { pruneOpt(view); view.updated = new Date(); view.status = "Updated " + fmtTime(view.updated); } else view.status = "Couldn’t refresh just now";
+    renderHeader(); renderMessages(view, {});
+  }
+
+  /* ---------- message model ---------- */
+  function normChannel(m) {
+    if (m._n) return m._n;
+    var isHtml = m.bodyContentType === "html";
+    var plain = isHtml ? plainOf(sanitize(m.bodyPreview)) : String(m.bodyPreview || "");
+    m._n = { id: m.id, raw: m, ts: new Date(m.createdDateTime), name: m.from && m.from.displayName || null,
+      mine: !!(m.from && m.from.userId === S.me.id), subject: m.subject || "", html: isHtml ? m.bodyPreview : null,
+      text: isHtml ? null : String(m.bodyPreview || ""), plain: plain, truncated: !!m.bodyTruncated, atts: m.attachments || [],
+      webUrl: m.webUrl, system: !m.from, replyable: true };
+    return m._n;
+  }
+  function normHit(r) {
+    return { id: r.id, raw: r, ts: new Date(r.createdDateTime), name: r.from && r.from.displayName || null,
+      mine: String(r.from && r.from.email || "").toLowerCase() === S.mail, subject: r.subject || "", html: null, text: r.summary || "",
+      plain: String(r.summary || ""), truncated: false, atts: [], webUrl: r.webUrl, system: false, replyable: false };
+  }
+  function normList(view) {
+    var arr = [];
+    var dets = view.det || (view.det = {});
+    view.msgs.forEach(function (m) { var n = view.kind === "chat" ? normHit(m) : normChannel(m); n.det = dets[n.id] || null; if (!n.system) arr.push(n); });
+    return arr;
+  }
+  function normText(s) { return String(s).toLowerCase().replace(/\s+/g, " ").trim(); }
+  function pruneOpt(view) {
+    if (!view.opt.length) return;
+    var mine = normList(view).filter(function (n) { return n.mine; });
+    view.opt = view.opt.filter(function (o) {
+      if (Date.now() - o.ts.getTime() > 5 * 60000) return false;
+      var key = normText(o.plain).slice(0, 40);
+      return !mine.some(function (n) { return n.ts.getTime() >= o.ts.getTime() - 120000 && normText(n.plain).indexOf(key) === 0; });
+    });
+  }
+  function addOpt(view, text) {
+    view.opt.push({ id: "local-" + Date.now(), ts: new Date(), name: S.me.displayName, mine: true, subject: "", html: null, text: text, plain: text, truncated: false, atts: [], pending: true, replyable: false });
+  }
+
+  /* ---------- rendering: header, empty, messages ---------- */
+  function renderHeader() {
+    var hd = $("#mhead"); hd.replaceChildren();
+    if (!V) return;
+    if (V.kind === "channel") {
+      hd.append(h("span", { class: "title" }, "# " + V.name), h("span", { class: "desc" }, V.desc ? String(V.desc).split("\n")[0] : ""));
+    } else {
+      hd.append(h("span", { class: "title" }, chatTitle(V.chat)),
+        h("span", { class: "desc" }, V.chat.chatType === "oneOnOne" ? "Direct message" : (V.chat.memberCount || "") + " members" + (V.capped ? " · showing messages from the first 7 other members" : "")));
+    }
+    hd.append(h("span", { class: "status", role: "status" })); paintStatus(V);
+    hd.append(h("button", { class: "ibtn", type: "button", onclick: function () { if (V.kind === "channel") refreshChannel(V); else pollChat(V); } }, "Refresh"));
+    if (V.kind === "channel" && /^https:/.test(V.webUrl || "")) hd.append(h("a", { class: "ibtn", href: V.webUrl, target: "_blank", rel: "noopener noreferrer" }, "Open in Teams"));
+  }
+  function renderEmpty(msg) {
+    var box = $("#msgs"); box.replaceChildren(h("div", { class: "empty" }, h("div", null, h("h2", null, msg ? "Nothing to show" : "Pick a conversation"),
+      h("p", null, msg || "Choose a channel from a team on the left, or open a chat from direct messages."))));
+  }
+  function msgNode(n, opts) {
+    var compact = opts.compact, view = opts.view;
+    var head = compact ? null : h("div", { class: "mhead" }, h("b", { class: "mname" }, n.name || "Unknown"),
+      h("time", { class: "mtime", title: n.ts.toLocaleString() }, fmtTime(n.ts)), n.pending ? h("span", { class: "pending" }, "Sending…") : null);
+    var det = n.det && n.det.body ? n.det : null;
+    var fHtml = det ? (det.body.contentType === "html" ? det.body.content : null) : n.html;
+    var fText = det ? (det.body.contentType === "html" ? null : det.body.content) : n.text;
+    var body = h("div", { class: "mbody" + (fHtml != null ? "" : " plain") });
+    if (fHtml != null) body.appendChild(sanitize(fHtml)); else body.textContent = fText || "";
+    var kids = [head, n.subject ? h("div", { class: "subject" }, n.subject) : null, body];
+    var main = h("div", { class: "mmain" }, kids);
+    var atts = (n.atts || []).filter(function (a) { return a && a.name; });
+    if (atts.length) main.appendChild(h("div", { class: "atts" }, atts.map(function (a) {
+      return /^https:/.test(a.contentUrl || "") ? h("a", { class: "att", href: a.contentUrl, target: "_blank", rel: "noopener noreferrer", title: a.name }, "📎 " + a.name) : h("span", { class: "att" }, "📎 " + a.name);
+    })));
+    if (n.det && n.det.reactions && n.det.reactions.length) main.appendChild(reactionChips(n.det.reactions));
+    if (n.truncated && !det) main.appendChild(h("div", { class: "trunc" }, !n.raw.uri ? "Preview shortened. Open in Teams to read the rest." : (n.det && n.det.failed ? "Couldn’t load the full message. Open in Teams to read the rest." : "Loading the full message…")));
+    var acts = h("div", { class: "acts" });
+    if (n.replyable && opts.canThread && !n.pending) acts.appendChild(h("button", { type: "button", onclick: function () { openThread(n); } }, "Reply in thread"));
+    if (/^https:/.test(n.webUrl || "")) acts.appendChild(h("a", { href: n.webUrl, target: "_blank", rel: "noopener noreferrer" }, "Open in Teams"));
+    if (acts.children.length) main.appendChild(acts);
+    var left = compact ? h("div", { class: "gutter" }, fmtTime(n.ts)) : avatar(n.name);
+    return h("div", { class: "msg" + (compact ? " compact" : ""), "data-id": n.id }, left, main);
+  }
+  function renderMessages(view, o) {
+    if (V !== view) return;
+    var box = $("#msgs"), prevH = box.scrollHeight, prevTop = box.scrollTop;
+    var nearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 140;
+    var list = normList(view).concat(view.opt).sort(function (a, b) { return a.ts - b.ts; });
+    var frag = document.createDocumentFragment();
+    if (view.kind === "channel" && view.cursor) frag.appendChild(h("button", { class: "older", type: "button", onclick: function () { loadOlderChannel(view); } }, "Load older messages"));
+    if (view.kind === "chat" && view.queries.some(function (q) { return q.more; })) frag.appendChild(h("button", { class: "older", type: "button", onclick: function () { loadChatPages(view, false); } }, "Load earlier messages"));
+    if (!list.length) {
+      frag.appendChild(h("div", { class: "empty", style: "height:auto;padding:48px 24px" }, h("div", null,
+        view.loading || view.status === "Loading…" ? h("div", { class: "spin", role: "status", "aria-label": "Loading" }) : [h("h2", null, "No messages yet"),
+        h("p", null, view.kind === "chat" ? "Nothing from the last 90 days turned up. Chats are read through Teams search, so very recent messages can take a moment to appear." : "Be the first to post here.")])));
+    }
+    var prev = null;
+    list.forEach(function (n) {
+      if (!prev || prev.ts.toDateString() !== n.ts.toDateString()) frag.appendChild(h("div", { class: "day" }, dayLabel(n.ts)));
+      var compact = prev && prev.ts.toDateString() === n.ts.toDateString() && prev.name === n.name && !n.subject && (n.ts - prev.ts) < 5 * 60000;
+      frag.appendChild(msgNode(n, { compact: compact, view: view, canThread: view.kind === "channel" }));
+      prev = n;
+    });
+    if (view.kind === "chat" && list.length) frag.appendChild(h("div", { class: "sysnote" }, "Chat history is read through Teams search, so the newest messages can take a moment to appear."));
+    box.replaceChildren(frag);
+    Array.prototype.forEach.call(box.querySelectorAll(".mbody"), function (b) {
+      if (b.scrollHeight > 270) {
+        b.classList.add("clamped");
+        var btn = h("button", { class: "more", type: "button", onclick: function () { var c = b.classList.toggle("clamped"); btn.textContent = c ? "Show more" : "Show less"; } }, "Show more");
+        b.parentNode.insertBefore(btn, b.nextSibling);
+      }
+    });
+    if (o && o.keep) box.scrollTop = box.scrollHeight - prevH + prevTop;
+    else if ((o && o.bottom) || nearBottom) box.scrollTop = box.scrollHeight;
+    view.rendered = true;
+    var known = view.known || (view.known = {}), fresh = 0;
+    list.forEach(function (n) { if (!known[n.id]) { known[n.id] = 1; if (view.liveOn && !n.mine && !n.pending && !(o && o.keep)) fresh++; } });
+    if (nearBottom || (o && o.bottom)) view.unseen = 0; else if (fresh) view.unseen = (view.unseen || 0) + fresh;
+    var pill = $("#newpill"); pill.hidden = !view.unseen;
+    if (view.unseen) pill.textContent = "↓ " + view.unseen + " new message" + (view.unseen === 1 ? "" : "s");
+    loadDetails(view);
+  }
+
+  /* ---------- composer ---------- */
+  function composer(placeholder, onSend) {
+    var ta = h("textarea", { rows: "1", placeholder: placeholder, "aria-label": placeholder });
+    var err = h("div", { class: "cerr", hidden: true, role: "alert" });
+    var btn = h("button", { class: "send", type: "button" }, "Send");
+    function grow() { ta.style.height = "auto"; ta.style.height = Math.min(ta.scrollHeight, 160) + "px"; }
+    async function go() {
+      var text = ta.value.trim(); if (!text || btn.disabled) return;
+      btn.disabled = true; err.hidden = true;
+      try { await onSend(text); ta.value = ""; grow(); }
+      catch (e) { err.textContent = explainWrite(e); err.hidden = false; }
+      finally { btn.disabled = false; ta.focus(); }
+    }
+    ta.addEventListener("input", grow);
+    ta.addEventListener("keydown", function (e) { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); go(); } });
+    btn.addEventListener("click", go);
+    return h("div", { class: "composer" }, ta, err, h("div", { class: "bar" }, h("span", { class: "hint" }, "Posts as you · Enter to send, Shift+Enter for a new line"), btn));
+  }
+  function renderComposer() {
+    var w = $("#composerWrap"); w.replaceChildren();
+    if (!V) return; var view = V;
+    if (view.kind === "channel") w.appendChild(composer("Message # " + view.name, async function (text) {
+      await S.mcp.callTool(SERVER, "teams_send_channel_message", { teamId: view.teamId, channelId: view.channelId, body: text, bodyType: "text" });
+      afterSend(view, text, "teams_list_channel_messages");
+    }));
+    else w.appendChild(composer("Message " + chatTitle(view.chat), async function (text) {
+      await S.mcp.callTool(SERVER, "teams_send_chat_message", { chatId: view.chat.id, body: text, bodyType: "text" });
+      afterSend(view, text, null);
+    }));
+  }
+  function afterSend(view, text, tool) {
+    addOpt(view, text);
+    if (V === view) renderMessages(view, { bottom: true });
+    if (tool) { S.mcp.invalidate(SERVER, tool).catch(function () {}).then(function () { if (V === view && view.poll) refreshChannel(view); }); }
+    else { setTimeout(function () { if (V === view) pollChat(view); }, 3000); setTimeout(function () { if (V === view) pollChat(view); }, 9000); }
+  }
+
+  /* ---------- threads ---------- */
+  function closeThread() {
+    if (S.thread && S.thread.stop) S.thread.stop();
+    S.thread = null; var t = $("#thread"); t.hidden = true; t.replaceChildren();
+  }
+  function openThread(root) {
+    if (!V || V.kind !== "channel") return;
+    closeThread(); var view = V;
+    var th = { root: root, view: view, msgs: new Map(), opt: [], status: "Loading…" };
+    S.thread = th; var t = $("#thread"); t.hidden = false;
+    th.stop = feed("teams_list_channel_messages", { teamId: view.teamId, channelId: view.channelId, parentMessageId: root.id, limit: 50 }, function (res) {
+      if (S.thread !== th) return;
+      splitPage(parseResult(res)).rows.forEach(function (m) { if (m && m.id && m.id !== root.id && m.createdDateTime && !m.deletedDateTime) th.msgs.set(m.id, m); });
+      th.status = ""; pruneThreadOpt(th); renderThread(th);
+    }, function (e) {
+      if (S.thread !== th) return;
+      th.status = explain(e); if (DENIAL[e.code]) th.msgs.clear(); renderThread(th);
+    });
+    renderThread(th, true);
+  }
+  function pruneThreadOpt(th) {
+    var mine = []; th.msgs.forEach(function (m) { var n = normChannel(m); if (n.mine) mine.push(n); });
+    th.opt = th.opt.filter(function (o) {
+      if (Date.now() - o.ts.getTime() > 5 * 60000) return false;
+      var key = normText(o.plain).slice(0, 40);
+      return !mine.some(function (n) { return n.ts.getTime() >= o.ts.getTime() - 120000 && normText(n.plain).indexOf(key) === 0; });
+    });
+  }
+  function renderThread(th, fresh) {
+    var t = $("#thread");
+    var list = $(".tlist", t), keepDraft = !fresh && list;
+    var replies = []; th.msgs.forEach(function (m) { replies.push(normChannel(m)); });
+    replies = replies.concat(th.opt).sort(function (a, b) { return a.ts - b.ts; });
+    var tl = h("div", { class: "tlist" });
+    var rootN = normChannel(th.root.raw); rootN.det = (th.view.det && th.view.det[rootN.id]) || null;
+    tl.appendChild(msgNode(rootN, { compact: false, view: th.view, canThread: false }));
+    tl.appendChild(h("div", { class: "tdiv" }, replies.length ? replies.length + (replies.length === 1 ? " reply" : " replies") : (th.status && th.status !== "Loading…" ? "" : th.status === "Loading…" ? "Loading replies…" : "No replies yet")));
+    if (th.status && th.status !== "Loading…") tl.appendChild(h("div", { class: "sysnote" }, th.status));
+    var prev = null;
+    replies.forEach(function (n) { tl.appendChild(msgNode(n, { compact: prev && prev.name === n.name && (n.ts - prev.ts) < 5 * 60000, view: th.view, canThread: false })); prev = n; });
+    if (keepDraft) { var nb = list.scrollHeight - list.scrollTop - list.clientHeight < 140, top = list.scrollTop; t.replaceChild(tl, list); tl.scrollTop = nb ? tl.scrollHeight : top; return; }
+    t.replaceChildren(h("div", { class: "thead" }, h("span", null, "Thread"), h("button", { class: "ibtn", type: "button", onclick: closeThread }, "Close")), tl,
+      composer("Reply in thread", async function (text) {
+        await S.mcp.callTool(SERVER, "teams_reply_channel_message", { teamId: th.view.teamId, channelId: th.view.channelId, messageId: th.root.id, body: text, bodyType: "text" });
+        th.opt.push({ id: "local-" + Date.now(), ts: new Date(), name: S.me.displayName, mine: true, subject: "", html: null, text: text, plain: text, truncated: false, atts: [], pending: true, replyable: false });
+        renderThread(th);
+        S.mcp.invalidate(SERVER, "teams_list_channel_messages").catch(function () {});
+      }));
+  }
+
+  /* ---------- search ---------- */
+  function closeSearch() { S.search = null; S.people = null; var p = $("#searchPanel"); p.hidden = true; p.replaceChildren(); }
+  async function runSearch(q, more) {
+    S.people = null;
+    var s = more && S.search && S.search.q === q ? S.search : (S.search = { q: q, offset: 0, rows: [], more: false });
+    s.loading = true; s.error = null; renderSearch();
+    try {
+      var pg = splitPage(parseResult(await read("chat_message_search", { query: q, limit: 25, offset: s.offset }, { cache: false })));
+      pg.rows.forEach(function (r) { if (r && r.id) s.rows.push(r); });
+      s.more = !!(pg.meta && pg.meta.moreResults);
+      s.offset = pg.meta && pg.meta.nextOffset != null ? pg.meta.nextOffset : s.offset + pg.rows.length;
+    } catch (e) { s.error = e; }
+    s.loading = false; if (S.search === s) renderSearch();
+  }
+  function renderSearch() {
+    var s = S.search, p = $("#searchPanel"); if (!s) return;
+    p.hidden = false; p.replaceChildren();
+    p.appendChild(h("h3", null, h("span", null, "Results for “" + s.q + "”"), h("button", { class: "ibtn", type: "button", onclick: closeSearch }, "Close")));
+    if (s.error) p.appendChild(h("div", { class: "cerr" }, explain(s.error)));
+    s.rows.forEach(function (r) {
+      var chat = S.chats.find(function (c) { return c.id === r.chatId; });
+      var where = r.channelUri ? "Channel" : (chat ? chatTitle(chat) : "Chat");
+      p.appendChild(h("button", { class: "hit", type: "button", onclick: function () { openHit(r); } },
+        h("div", { class: "meta" }, h("b", null, r.from && r.from.displayName || "Unknown"), h("span", null, where), h("span", null, r.createdDateTime ? new Date(r.createdDateTime).toLocaleString() : "")),
+        h("div", { class: "snip" }, (r.subject ? r.subject + ": " : "") + (r.summary || ""))));
+    });
+    if (s.loading) p.appendChild(h("div", { class: "spin", role: "status", "aria-label": "Searching", style: "margin:16px auto" }));
+    else if (!s.rows.length && !s.error) p.appendChild(h("p", { class: "colmsg", style: "color:var(--muted)" }, "No messages found."));
+    if (s.more && !s.loading) p.appendChild(h("button", { class: "older", type: "button", onclick: function () { runSearch(s.q, true); } }, "Load more results"));
+  }
+  function openHit(r) {
+    closeSearch();
+    if (r.channelUri) {
+      var m = /teams\/([^/]+)\/channels\/([^/]+)/.exec(r.channelUri);
+      if (m) { var tid = decodeURIComponent(m[1]), cid = decodeURIComponent(m[2]); if (S.teams.some(function (t) { return t.id === tid; })) { selectTeam(tid, cid); return; } }
+    } else {
+      var c = S.chats.find(function (x) { return x.id === r.chatId; });
+      if (c) { openChat(c); return; }
+    }
+    if (/^https:/.test(r.webUrl || "")) window.open(r.webUrl, "_blank", "noopener");
+  }
+
+  /* ---------- full message bodies and reactions (read_resource) ---------- */
+  var REACT_EMOJI = { like: "\ud83d\udc4d", heart: "\u2764\ufe0f", laugh: "\ud83d\ude06", surprised: "\ud83d\ude2e", sad: "\ud83d\ude22", angry: "\ud83d\ude20", checkmark: "\u2705" };
+  function reactEmoji(t) {
+    var s = String(t || ""), k = s.toLowerCase();
+    if (REACT_EMOJI[k]) return REACT_EMOJI[k];
+    return /^[a-z0-9_-]+$/i.test(s) ? ":" + s + ":" : (s || "\u2754");
+  }
+  function reactionChips(list) {
+    var groups = {}, order = [];
+    list.forEach(function (r) {
+      var type = (r && (r.reactionType || r.type || r.emoji)) || "";
+      var u = r && r.user;
+      var who = (u && ((u.user && u.user.displayName) || u.displayName)) || (r && r.displayName) || "Someone";
+      var uid = (u && ((u.user && u.user.id) || u.id)) || "";
+      if (!groups[type]) { groups[type] = { names: [], mine: false }; order.push(type); }
+      groups[type].names.push(who);
+      if (uid && S.me && uid === S.me.id) groups[type].mine = true;
+    });
+    return h("div", { class: "reacts" }, order.map(function (t) {
+      var g = groups[t], e = reactEmoji(t);
+      return h("span", { class: "react" + (g.mine ? " mine" : ""), title: g.names.join(", "), "aria-label": g.names.length + " reacted " + e }, e, g.names.length > 1 ? " " + g.names.length : "");
+    }));
+  }
+  function loadDetails(view) {
+    if (V !== view) return;
+    if (view.detBusy) { view.detAgain = true; return; }
+    var dets = view.det || (view.det = {});
+    var todo = normList(view).sort(function (a, b) { return b.ts - a.ts; }).slice(0, 40).filter(function (n) {
+      if (!n.raw || !n.raw.uri || n.pending) return false;
+      var d = dets[n.id], mod = n.raw.lastModifiedDateTime || "";
+      if (!d) return true;
+      if (d.mod !== mod) return true;
+      return !!(d.failed && Date.now() - d.failed > 60000);
+    });
+    if (!todo.length) return;
+    view.detBusy = true;
+    var i = 0, changed = false;
+    async function worker() {
+      while (i < todo.length) {
+        var n = todo[i++]; if (V !== view) return;
+        var mod = n.raw.lastModifiedDateTime || "";
+        try {
+          var o = parseResult(await read("read_resource", { uri: n.raw.uri }, { cache: false }))[0];
+          if (o && o.body && typeof o.body.content === "string") dets[n.id] = { mod: mod, body: o.body, reactions: Array.isArray(o.reactions) ? o.reactions : [] };
+          else dets[n.id] = { mod: mod, body: null, reactions: [], failed: Date.now() };
+          changed = true;
+        } catch (e) {
+          if (e && DENIAL[e.code]) { i = todo.length; return; }
+          dets[n.id] = { mod: mod, body: null, reactions: [], failed: Date.now() }; changed = true;
+        }
+      }
+    }
+    Promise.all([worker(), worker(), worker(), worker()]).then(function () {
+      view.detBusy = false;
+      if (V !== view) return;
+      if (changed) { renderMessages(view, {}); if (S.thread && S.thread.view === view) renderThread(S.thread); }
+      if (view.detAgain) { view.detAgain = false; loadDetails(view); }
+    });
+  }
+
+  /* ---------- live updates (fast polling; Teams offers no push channel) ---------- */
+  function paintStatus(view) {
+    if (V !== view) return;
+    var el = $("#mhead .status"); if (!el) return;
+    var txt = view.liveOk === false ? "Reconnecting…" : view.checked ? "Live · checked " + view.checked.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : (view.status || "");
+    el.replaceChildren(h("span", { class: "live" + (view.liveOk === false ? " off" : ""), "aria-hidden": "true" }), txt);
+  }
+  function sigOf(view) { var mx = ""; view.msgs.forEach(function (m) { var t = m.lastModifiedDateTime || ""; if (t > mx) mx = t; }); return view.msgs.size + "|" + mx; }
+  async function liveChannel(view) {
+    var res = await read("teams_list_channel_messages", { teamId: view.teamId, channelId: view.channelId, limit: 30 }, { cache: false });
+    if (V !== view) return;
+    var before = sigOf(view), ob = view.opt.length;
+    ingestChannel(view, res); view.gotData = true;
+    if (sigOf(view) !== before || view.opt.length !== ob) renderMessages(view, {});
+  }
+  async function liveChat(view) {
+    // one cheap search across all chats for the last 10 minutes, filtered to this chat
+    var since = new Date(Date.now() - 10 * 60000).toISOString(), offset = 0, pages = 0, more = true, got = false;
+    while (more && pages < 4) {
+      var pg = splitPage(parseResult(await read("chat_message_search", { query: "*", limit: 25, offset: offset, afterDateTime: since }, { cache: false })));
+      if (V !== view) return;
+      pages++;
+      pg.rows.forEach(function (r) { if (r && r.id && r.chatId === view.chat.id) { var prev = view.msgs.get(r.id); if (!prev || prev.lastModifiedDateTime !== r.lastModifiedDateTime) got = true; view.msgs.set(r.id, r); } });
+      more = !!(pg.meta && pg.meta.moreResults);
+      offset = pg.meta && pg.meta.nextOffset != null ? pg.meta.nextOffset : offset + pg.rows.length;
+    }
+    var ob = view.opt.length; pruneOpt(view);
+    if (got || view.opt.length !== ob) renderMessages(view, {});
+  }
+  async function liveThread(th) {
+    var res = await read("teams_list_channel_messages", { teamId: th.view.teamId, channelId: th.view.channelId, parentMessageId: th.root.id, limit: 50 }, { cache: false });
+    if (S.thread !== th) return;
+    var before = th.msgs.size, ob = th.opt.length;
+    splitPage(parseResult(res)).rows.forEach(function (m) { if (m && m.id && m.id !== th.root.id && m.createdDateTime && !m.deletedDateTime) th.msgs.set(m.id, m); });
+    pruneThreadOpt(th);
+    if (th.msgs.size !== before || th.opt.length !== ob) renderThread(th);
+  }
+  function startLive(view) {
+    var delay = 4000, timer = null, n = 0, busy = false;
+    async function tick() {
+      if (V !== view || view.dead || busy) return;
+      busy = true;
+      var ok = true, denied = false;
+      if (!document.hidden) {
+        try {
+          n++;
+          if (view.kind === "channel") await liveChannel(view);
+          else { await liveChat(view); if (n % 20 === 0) await pollChat(view); }
+          view.checked = new Date();
+        } catch (e) {
+          ok = false;
+          if (e && DENIAL[e.code]) { denied = true; notice(explain(e)); }
+        }
+        if (ok && S.thread && S.thread.view === view) { try { await liveThread(S.thread); } catch (e) {} }
+      }
+      busy = false;
+      if (V !== view || view.dead) return;
+      view.liveOk = ok; view.liveOn = true; paintStatus(view);
+      if (denied) return;
+      delay = ok ? 4000 : Math.min(delay * 2, 60000);
+      timer = setTimeout(tick, delay);
+    }
+    view.kick = function () { if (busy) return; clearTimeout(timer); tick(); };
+    view.liveStop = function () { clearTimeout(timer); };
+    timer = setTimeout(tick, delay);
+  }
+
+  /* ---------- new message (find or create a 1:1 chat) ---------- */
+  var peopleTimer = null;
+  function openNewMessage() {
+    closeNav(); S.search = null;
+    S.people = { q: "", rows: [], loading: false, error: null, startError: null, starting: false, seq: 0 };
+    $("#searchPanel").replaceChildren();
+    renderPeople(true);
+  }
+  function renderPeople(focus) {
+    var s = S.people, p = $("#searchPanel"); if (!s) return;
+    var input = $(".pfield", p);
+    if (!input) {
+      p.hidden = false; p.replaceChildren();
+      p.appendChild(h("h3", null, h("span", null, "New message"), h("button", { class: "ibtn", type: "button", onclick: closeSearch }, "Close")));
+      input = h("input", { class: "pfield", type: "search", placeholder: "Search for a person by name or email", "aria-label": "Search for a person", autocomplete: "off" });
+      input.addEventListener("input", function () { s.q = input.value; clearTimeout(peopleTimer); peopleTimer = setTimeout(function () { findPeople(s); }, 300); });
+      p.appendChild(input); p.appendChild(h("div", { class: "plist" }));
+    }
+    var list = $(".plist", p); list.replaceChildren();
+    if (s.error) list.appendChild(h("div", { class: "cerr" }, explain(s.error)));
+    if (s.startError) list.appendChild(h("div", { class: "cerr", role: "alert" }, s.startError));
+    if (s.loading) list.appendChild(h("div", { class: "spin", role: "status", "aria-label": "Searching", style: "margin:16px auto" }));
+    else if (s.q.trim().length < 2) list.appendChild(h("p", { class: "colmsg", style: "color:var(--muted)" }, "Type at least two letters. You can message anyone in your organisation, even if you’ve never chatted before."));
+    else if (!s.rows.length && !s.error) list.appendChild(h("p", { class: "colmsg", style: "color:var(--muted)" }, "No people found."));
+    s.rows.forEach(function (r) {
+      list.appendChild(h("button", { class: "person", type: "button", disabled: s.starting, onclick: function () { startChatWith(s, r); } },
+        avatar(r.displayName), h("div", null, h("b", null, r.displayName), h("small", null, r.jobTitle || r.mail || r.userPrincipalName))));
+    });
+    if (focus) input.focus();
+  }
+  async function findPeople(s) {
+    var q = s.q.trim(), seq = ++s.seq;
+    s.startError = null;
+    if (q.length < 2) { s.rows = []; s.loading = false; s.error = null; if (S.people === s) renderPeople(); return; }
+    s.loading = true; s.error = null; renderPeople();
+    try {
+      var rows = parseResult(await read("search_people", { query: q, limit: 15 }, { cache: false }));
+      if (seq !== s.seq) return;
+      s.rows = rows.filter(function (r) { return r && r.id && r.userPrincipalName && r.personType === "Person/OrganizationUser" && String(r.userPrincipalName).toLowerCase() !== S.mail; });
+    } catch (e) { if (seq !== s.seq) return; s.error = e; s.rows = []; }
+    s.loading = false; if (S.people === s) renderPeople();
+  }
+  function chatIdFrom(res) {
+    var o = parseResult(res)[0];
+    var id = o && (o.id || o.chatId || (o.chat && o.chat.id));
+    if (id) return String(id);
+    var txt = ((res && res.content) || []).map(function (b) { return b && b.text || ""; }).join(" ");
+    var m = /19:[^\s"',]+@(?:unq\.gbl\.spaces|thread\.v2)/.exec(txt);
+    return m ? m[0] : null;
+  }
+  async function startChatWith(s, person) {
+    if (s.starting) return;
+    s.starting = true; s.startError = null; renderPeople();
+    var upn = person.userPrincipalName, email = String(person.mail || upn).toLowerCase();
+    try {
+      var chat = S.chats.find(function (c) {
+        return c.chatType === "oneOnOne" && (c.members || []).length === 2 && c.members.some(function (m) { return String(m.email || "").toLowerCase() === email; });
+      });
+      if (!chat) {
+        var id = chatIdFrom(await S.mcp.callTool(SERVER, "teams_create_chat", { members: [upn], chatType: "oneOnOne" }));
+        if (!id) throw { code: "upstream_error", message: "Teams didn’t return a chat id." };
+        chat = S.chats.find(function (c) { return c.id === id; });
+        if (!chat) {
+          chat = { id: id, chatType: "oneOnOne", topic: null, memberCount: 2, members: [{ displayName: S.me.displayName, email: S.mail }, { displayName: person.displayName, email: email }] };
+          S.chats.unshift(chat);
+        }
+      }
+      openChat(chat);
+    } catch (e) {
+      s.starting = false; s.startError = explain(e);
+      if (S.people === s) renderPeople();
+    }
+  }
+
+  /* ---------- wiring ---------- */
+  $("#burger").addEventListener("click", function () { $("#app").classList.toggle("nav-open"); });
+  $("#newpill").addEventListener("click", function () { var b = $("#msgs"); b.scrollTop = b.scrollHeight; if (V) V.unseen = 0; this.hidden = true; });
+  $("#msgs").addEventListener("scroll", function () { if (V && V.unseen && this.scrollHeight - this.scrollTop - this.clientHeight < 140) { V.unseen = 0; $("#newpill").hidden = true; } });
+  document.addEventListener("visibilitychange", function () { if (!document.hidden && V && V.kick) V.kick(); });
+  $("#backdrop").addEventListener("click", closeNav);
+  $("#search").addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && !e.isComposing) { var q = this.value.trim(); if (q && S.mcp && S.me) runSearch(q, false); }
+    else if (e.key === "Escape") { this.value = ""; closeSearch(); }
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") { if (S.search || S.people) closeSearch(); else if (S.thread) closeThread(); }
+  });
+  boot();
+})();
+</script>
+</body>
+</html>
