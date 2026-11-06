@@ -6,5 +6,13 @@
       "GRAPH_TENANT_ID": "<your Directory (tenant) ID>",
       "GRAPH_CLIENT_ID": "<your Application (client) ID>"
     }
+  },
+  "Profile": {
+    "command": "node",
+    "args": ["mcp/profile/server.mjs"],
+    "env": {
+      "PROFILE_TENANT_ID": "<your Directory (tenant) ID>",
+      "PROFILE_CLIENT_ID": "<your Application (client) ID>"
+    }
   }
 }

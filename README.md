@@ -69,6 +69,17 @@ To test without SharePoint, run `node --env-file=.env.mock dev-server.mjs` and o
 
 **See [deploy.md](deploy.md)** for page rules, testing on a real SharePoint page, building, the App Catalog and putting the web parts on pages.
 
+## Profile server, `User.Read` only (`mcp/profile`)
+
+This is a least-privilege MCP server with one tool, `get_me`, which returns the signed-in user's profile. Its result has the same shape as the Teams server's `get_me`. It needs only the delegated `User.Read` permission, so no admin consent is required.
+
+1. **App registration**: use a separate app with just one permission.
+   - Authentication: platform *Mobile and desktop applications*, redirect URI `http://localhost`.
+   - API permissions: Microsoft Graph → Delegated → `User.Read`.
+2. Put the tenant ID and client ID in `.env` as `PROFILE_TENANT_ID` and `PROFILE_CLIENT_ID`, or under the `Profile` entry's `env` in `mcp.config.json`.
+3. Run `node --env-file-if-exists=.env mcp/profile/login.mjs`. Its token cache is separate from the Teams one, at `%LOCALAPPDATA%\profile-mcp\msal-cache.bin`. To sign out, run `node --env-file-if-exists=.env mcp/profile/login.mjs --logout`.
+4. To run it on its own, use `node --env-file-if-exists=.env mcp/profile/server.mjs` (stdio). `node dev-server.mjs` also exposes it to pages as the `Profile` server.
+
 ## Environment variables
 
 | Variable | Default | Effect |
