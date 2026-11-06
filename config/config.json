@@ -9,6 +9,14 @@
           "manifest": "./src/webparts/helloWorld/HelloWorldWebPart.manifest.json"
         }
       ]
+    },
+    "profile-card-web-part": {
+      "components": [
+        {
+          "entrypoint": "./lib/webparts/profileCard/ProfileCardWebPart.js",
+          "manifest": "./src/webparts/profileCard/ProfileCardWebPart.manifest.json"
+        }
+      ]
     }
   },
   "externals": {},

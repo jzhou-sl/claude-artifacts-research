@@ -16,6 +16,7 @@
     "@microsoft/sp-core-library": "1.24.1",
     "@microsoft/sp-component-base": "1.24.1",
     "@microsoft/sp-webpart-base": "1.24.1",
+    "@microsoft/sp-http": "1.24.1",
     "@azure/msal-node": "^7.2.0",
     "@azure/msal-node-extensions": "^5.6.0",
     "@modelcontextprotocol/sdk": "^1.32.2",

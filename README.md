@@ -14,7 +14,7 @@ node --env-file=.env.mock dev-server.mjs   # mock data, no sign-in needed
 node dev-server.mjs                        # real Teams (set up first, see below)
 ```
 
-`/` serves `web-parts/hello-world.html` (change it with `DEFAULT_PAGE`). For Teams, open <http://127.0.0.1:5173/teams-slack-style.html> and click **Connect Microsoft 365**. Any other `.html` file in `web-parts/` is served at `/<name>.html` with the shim injected.
+`/` serves `web-parts/hello-world.html` (change it with `DEFAULT_PAGE`). For Teams, open <http://127.0.0.1:5173/teams-slack-style.html> and click **Connect Microsoft 365**. For the profile card, open <http://127.0.0.1:5173/profile-card.html>; it uses the `Profile` server (mock mode serves Alex Morgan from `mcp/mock/`). Any other `.html` file in `web-parts/` is served at `/<name>.html` with the shim injected.
 
 ## Real Teams setup (`mcp/teams`)
 
@@ -41,20 +41,22 @@ node dev-server.mjs                        # real Teams (set up first, see below
 | `dev-server.mjs` | Injects the shim, bridges calls to MCP servers, and rejects calls from other origins |
 | `mcp.config.json` / `mcp.config.mock.json` | Server name → MCP server, for real and mock mode (selected with `MCP_CONFIG`) |
 | `mcp/teams-core/` | Environment-neutral tool logic used by `mcp/teams` (and kept browser-safe for a later in-browser host): `tools.js` (handlers), `graph.js` (Graph client), `map.js` (Graph → page shapes), `result-error.js` (error mapping) |
+| `mcp/profile/` | `User.Read`-only MCP server: `server.mjs` (registration), `tool.mjs` (the `get_me` handler, browser-safe and also bundled into SharePoint web parts), `auth.mjs` / `login.mjs` (MSAL Node) |
 | `mcp/teams/` | Real MCP server: `server.js` (input schemas + registration), `auth.js` / `login.js` (MSAL Node) |
-| `web-parts/` | The HTML pages. `hello-world.html` is deployed to SharePoint as the "Hello world" web part |
-| `package.json`, `config/`, `src/`, `scripts/`, `host/`, `pages.json` | SPFx project (the repo root): one web part per page in `pages.json` (see below and [deploy.md](deploy.md)). `src/PageWebPart.ts` is the shared web part, `host/mount.js` the mount code, `scripts/` the generator (`prepare.mjs`, `codegen.mjs`, `pages.mjs`, `add-page.mjs`). `src/webparts/` and `src/generated/` are generated |
+| `web-parts/` | The HTML pages. `hello-world.html` and `profile-card.html` are deployed to SharePoint as the "Hello world" and "My profile" web parts |
+| `package.json`, `config/`, `src/`, `scripts/`, `host/`, `pages.json` | SPFx project (the repo root): one web part per page in `pages.json` (see below and [deploy.md](deploy.md)). `src/PageWebPart.ts` is the shared web part (`src/McpPageWebPart.ts` for pages that use MCP), `host/mount.js` the mount code, `scripts/` the generator (`prepare.mjs`, `codegen.mjs`, `pages.mjs`, `add-page.mjs`). `src/webparts/` and `src/generated/` are generated |
 | `mcp/mock/` | Mock server with in-memory state, seeded from `fixtures.js` |
 
 Config entries can also point at HTTP MCP servers: `{ "url": "https://…/mcp", "headers": { … } }`.
 
 ## SharePoint (intranet hosting)
 
-The repo is also an SPFx project that packages HTML pages as web parts for SharePoint Online: **one web part per page listed in `pages.json`**, all in a single `.sppkg`. They need no MCP, no Graph and no API permissions. The Teams page above isn't included, because it has no Microsoft 365 connection in SharePoint; it runs locally only.
+The repo is also an SPFx project that packages HTML pages as web parts for SharePoint Online: **one web part per page listed in `pages.json`**, all in a single `.sppkg`. Most need no MCP and no Graph. A page can opt in to an MCP server that the web part provides in the browser by listing it in its `pages.json` entry, for example `"mcp": ["Profile"]`. The web part then installs the `window.claude` shim in the page with an in-browser transport that runs the server's tool handlers (here `mcp/profile/tool.mjs`) against Microsoft Graph with the visitor's SharePoint sign-in. So the same page works locally through `dev-server.mjs` and on SharePoint. `Profile` is the only server available this way, and it's why the package requests delegated `User.Read` (approved once by an admin, see [deploy.md](deploy.md) §5). The Teams page above isn't included; it runs locally only.
 
 ```
 SharePoint page ─► page web part ─► iframe (page markup + CSS)
                                        └─ page script, run against the iframe's window
+                                            └─ window.claude.use("mcp") ─► in-browser tool handlers ─► Graph   ("mcp" pages only)
 ```
 
 Each HTML page stays the single source. Before every build and start, `scripts/prepare.mjs` generates a web part per `pages.json` entry (`src/webparts/<key>/`, a thin subclass of `src/PageWebPart.ts`), the page modules (`src/generated/`) and the bundle list in `config/config.json`. A page's inline script is bundled rather than run inline, so it works under SharePoint's CSP.
@@ -77,6 +79,8 @@ This is a least-privilege MCP server with one tool, `get_me`, which returns the 
 2. Put the tenant ID and client ID in `.env` as `PROFILE_TENANT_ID` and `PROFILE_CLIENT_ID`, or under the `Profile` entry's `env` in `mcp.config.json`.
 3. Run `node --env-file-if-exists=.env mcp/profile/login.mjs`. Its token cache is separate from the Teams one, at `%LOCALAPPDATA%\profile-mcp\msal-cache.bin`. To sign out, run `node --env-file-if-exists=.env mcp/profile/login.mjs --logout`.
 4. To run it on its own, use `node --env-file-if-exists=.env mcp/profile/server.mjs` (stdio). `node dev-server.mjs` also exposes it to pages as the `Profile` server.
+
+`web-parts/profile-card.html` (the "My profile" web part) calls it. On SharePoint the web part runs the same `get_me` handler in the browser instead, so it needs neither this app registration nor a sign-in step there.
 
 ## Environment variables
 

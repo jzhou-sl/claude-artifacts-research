@@ -5,7 +5,8 @@
 //     "id": "7c081f09-…",                    // the web part's permanent GUID: never change it once deployed
 //     "key": "helloWorld",                   // camelCase; names the generated folder, class and bundle
 //     "title": "Hello world",                // shown in the SharePoint toolbox
-//     "description": "…", "icon": "Emoji2" } // icon: a Fluent UI icon name
+//     "description": "…", "icon": "Emoji2",  // icon: a Fluent UI icon name
+//     "mcp": ["Profile"] }                    // optional: MCP servers the page calls through window.claude
 import { readFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
@@ -17,6 +18,9 @@ export const PAGES_FILE = path.join(SP_DIR, "pages.json");
 
 const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const KEY = /^[a-z][A-Za-z0-9]*$/;
+
+/** MCP servers a SharePoint web part can provide in the browser (src/McpPageWebPart.ts SERVERS). */
+export const MCP_SERVERS = ["Profile"];
 
 /** "my-page.html" -> "myPage" */
 export function keyFromFile(file) {
@@ -43,9 +47,12 @@ export async function loadPages() {
     if (p.key && !KEY.test(p.key)) problems.push(`${at}: "key" must be camelCase letters/digits, like "helloWorld"`);
     if (p.id && ids.has(p.id.toLowerCase())) problems.push(`${at}: duplicate id ${p.id}`);
     if (p.key && keys.has(p.key)) problems.push(`${at}: duplicate key ${p.key}`);
+    if (p.mcp !== undefined && (!Array.isArray(p.mcp) || p.mcp.some((s) => !MCP_SERVERS.includes(s)))) {
+      problems.push(`${at}: "mcp" must be an array of server names from: ${MCP_SERVERS.join(", ")}`);
+    }
     if (p.file && !existsSync(path.join(ROOT_DIR, p.file))) problems.push(`${at}: file not found (paths are relative to the repo root)`);
     ids.add(String(p.id).toLowerCase()); keys.add(p.key);
   });
   if (problems.length) throw new Error("Invalid pages.json:\n  - " + problems.join("\n  - "));
-  return pages.map((p) => ({ description: "", icon: "Page", ...p }));
+  return pages.map((p) => ({ description: "", icon: "Page", mcp: [], ...p }));
 }

@@ -1,6 +1,6 @@
 // Base class for every page web part. scripts/prepare.mjs generates one subclass per entry in pages.json
 // (src/webparts/<key>/), which only supplies the page. The mounting logic lives in host/mount.js; this class adds
-// the SharePoint theme and lifecycle.
+// the SharePoint theme and lifecycle. Pages that use MCP servers extend McpPageWebPart instead.
 import { Version } from '@microsoft/sp-core-library';
 import { BaseClientSideWebPart } from '@microsoft/sp-webpart-base';
 import type { IReadonlyTheme } from '@microsoft/sp-component-base';
@@ -23,8 +23,11 @@ export abstract class PageWebPart extends BaseClientSideWebPart<object> {
 
   public render(): void {
     if (this._app) return; // the page manages its own state; don't rebuild on re-render
-    this._app = mountPage(this.domElement, { page: this.page, dark: this._dark });
+    this._app = mountPage(this.domElement, { page: this.page, dark: this._dark, beforeRun: (win: Window) => this.beforeRun(win) });
   }
+
+  /** Runs against the page's iframe window just before the page script. */
+  protected beforeRun(win: Window): void {}
 
   protected onThemeChanged(theme: IReadonlyTheme | undefined): void {
     this._dark = !!theme?.isInverted; // follow the SharePoint theme, not the OS, so the page matches the chrome

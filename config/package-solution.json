@@ -3,7 +3,7 @@
   "solution": {
     "name": "intranet-html-pages",
     "id": "d3321034-2ae4-42f1-baa2-bc551702567b",
-    "version": "1.0.0.0",
+    "version": "1.0.1.0",
     "includeClientSideAssets": true,
     "skipFeatureDeployment": true,
     "developer": {
@@ -30,6 +30,12 @@
         "description": "Adds one web part per HTML page listed in pages.json.",
         "id": "217a244c-02b1-4a76-a9ff-62a8d0811cf5",
         "version": "1.0.0.0"
+      }
+    ],
+    "webApiPermissionRequests": [
+      {
+        "resource": "Microsoft Graph",
+        "scope": "User.Read"
       }
     ]
   },
