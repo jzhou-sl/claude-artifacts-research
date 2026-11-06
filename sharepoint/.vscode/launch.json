@@ -2,10 +2,10 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Hosted workbench",
+      "name": "Debug on SharePoint page",
       "type": "msedge",
       "request": "launch",
-      "url": "https://{tenantDomain}/_layouts/workbench.aspx",
+      "url": "https://${env:SPFX_SERVE_TENANT_DOMAIN}/sites/NewcastleSocialCommittee/SitePages/SPFx-dev.aspx?debug=true&noredir=true&debugManifestsFile=https://localhost:4321/temp/build/manifests.js",
       "webRoot": "${workspaceRoot}",
       "sourceMaps": true,
       "sourceMapPathOverrides": {

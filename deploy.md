@@ -13,6 +13,7 @@ HTML page ─► npm run build ─► .sppkg ─► App Catalog ─► site ─�
 - **Edit rights** on the target site.
 - The web parts request no API permissions, so no admin approval is needed.
 - Run `npm install` in `sharepoint/` once.
+- **For testing on SharePoint (section 4):** the `SPFX_SERVE_TENANT_DOMAIN` environment variable, and a debug page you can edit (by default `NewcastleSocialCommittee/SitePages/SPFx-dev.aspx`).
 
 ## 2. Add a page
 
@@ -36,15 +37,27 @@ From the repo root, run `npm run dev:mock` and open <http://127.0.0.1:5173/share
 
 ## 4. Test on SharePoint with your local code
 
-This runs your local code on a real page, and only you see it. The `/_layouts/workbench.aspx` workbench is **retired on 1 December 2026**, so use a page instead:
+This runs your local code on a real page, and only you see it. The hosted workbench (`/_layouts/workbench.aspx`) is **retired on 1 December 2026**. Microsoft's replacement is the **SPFx debugging toolbar** on a normal modern page. We use a dedicated debug page, so the intranet's real pages are never touched.
 
-1. `cd sharepoint && npm start -- --nobrowser`, and wait for the build to finish.
-2. Open a modern test page you can edit, and add this to the end of its URL (use `&` if the URL already has a `?`):
-   `?loadSPFX=true&debugManifestsFile=https://localhost:4321/temp/build/manifests.js`
-3. Choose **Allow** when Edge asks about local network access, then **Load debug scripts**.
-4. **Edit** the page → **+** inside a section → search for the web part's title.
+**One-time setup:**
+
+1. Tell the dev server your tenant, then open a new shell:
+   ```powershell
+   setx SPFX_SERVE_TENANT_DOMAIN scottlogic.sharepoint.com
+   ```
+   `sharepoint/config/serve.json` and the VS Code **Debug on SharePoint page** launch config fill in `{tenantDomain}` from this variable.
+2. Have a debug page. The default is `https://scottlogic.sharepoint.com/sites/NewcastleSocialCommittee/SitePages/SPFx-dev.aspx`. To use your own, create a page on any site where you have edit rights (**+ New → Page**, blank, then **Publish**). Then put its URL in `initialPage` in `sharepoint/config/serve.json` (keep `{tenantDomain}`) and in `sharepoint/.vscode/launch.json`. Creating a site isn't needed: most users can't, and a page is enough.
+
+**Each time:**
+
+1. `cd sharepoint && npm start`, and wait for the build to finish. It opens `https://scottlogic.sharepoint.com/sites/NewcastleSocialCommittee/SitePages/SPFx-dev.aspx` with the debug parameters already added.
+2. Choose **Allow** when Edge asks about local network access, then **Load debug scripts**. The debugging toolbar appears on the page.
+3. The first time, **Edit** the page → **+** inside a section → search for the web part's title → **Save as draft**. Don't republish: the page is on a shared site, and other visitors would see a broken web part whenever your dev server isn't running. The draft is only visible to editors, and the web part stays in it from then on.
 
 It rebuilds when you save, so reload the page to see changes. **Stop** on the debug toolbar, or adding `reset=true` to the URL, turns local code off.
+
+**Testing on a different page:** run `npm start -- --nobrowser`, then open any modern page you can edit and add this to the end of its URL (use `&` if the URL already has a `?`):
+`?debug=true&noredir=true&debugManifestsFile=https://localhost:4321/temp/build/manifests.js`
 
 ## 5. Build the package
 
@@ -88,6 +101,8 @@ Skip this if you added the app to all sites. Otherwise, on the site: gear icon �
 | Symptom | Fix |
 |---|---|
 | Local web part missing from the toolbox | Make sure `npm start` is running. Open <https://localhost:4321/temp/build/manifests.js> and accept any certificate warning. Check that the site's **Local network access** permission is **Allow** and that you chose **Load debug scripts**. |
+| `npm start` warns that `SPFX_SERVE_TENANT_DOMAIN is not set`, or the browser opens a URL containing `{tenantDomain}` | Run the `setx` command in section 4 and open a new shell. |
+| The debug page returns 404 | The page in `initialPage` (`sharepoint/config/serve.json`) doesn't exist, or its file name differs from its title. Open the page yourself and copy the URL from the address bar into `initialPage` (section 4). |
 | Empty canvas, or **+** shows layout options | That's normal. Use the **+** inside a section (section 8). |
 | `getPageBasicInfo` / `ComponentPerfLogger` console errors | SharePoint's own telemetry. They're harmless. |
 | `Invalid pages.json` or `at most one inline <script>` | Fix what the message lists. |

@@ -62,7 +62,7 @@ Each HTML page stays the single source. Before every build and start, `scripts/p
 ```sh
 cd sharepoint
 npm run add-page -- my-page.html "My page"   # register a page (path relative to the repo root)
-npm start                                     # local code, for testing on a SharePoint page
+npm start                                     # local code on the debug page (deploy.md §4)
 npm run build                                 # → sharepoint/sharepoint/solution/intranet-html-pages.sppkg
 ```
 
