@@ -74,7 +74,7 @@ npm run build                                                    # → sharepoin
 This is a least-privilege MCP server with two tools: `get_me` returns the signed-in user's profile, with the same result shape as the Teams server's `get_me`, and `get_my_photo` returns their profile photo (`GET /me/photo/$value`) as an MCP `image` block, or just a text block when no photo is set. It needs only the delegated `User.Read` permission, so no admin consent is required.
 
 1. **App registration**: use a separate app with just one permission.
-   - Authentication: platform *Mobile and desktop applications*, redirect URI `http://localhost`.
+   - Authentication: redirect URI `http://localhost:7071/auth/callback` (the path is part of the match). The sign-in listens there for the callback. Set `PROFILE_REDIRECT_URI` if your registration uses another URI (an `https://localhost` one uses the SPFx dev certificate in `~/.rushstack`). If the URI is under the *Web* platform, Entra may refuse to redeem the sign-in code without a secret (`AADSTS7000218`); then also set `PROFILE_CLIENT_SECRET`.
    - API permissions: Microsoft Graph → Delegated → `User.Read`.
 2. Put the tenant ID and client ID in `.env` as `PROFILE_TENANT_ID` and `PROFILE_CLIENT_ID`, or under the `Profile` entry's `env` in `mcp.config.json`.
 3. Run `node --env-file-if-exists=.env mcp/profile/login.mjs`. Its token cache is separate from the Teams one, at `%LOCALAPPDATA%\profile-mcp\msal-cache.bin`. To sign out, run `node --env-file-if-exists=.env mcp/profile/login.mjs --logout`.
@@ -89,6 +89,8 @@ This is a least-privilege MCP server with two tools: `get_me` returns the signed
 | `PORT` | `5173` | Dev server port (binds to 127.0.0.1 only) |
 | `MCP_CONFIG` | `mcp.config.json` | Which config file to load |
 | `DEFAULT_PAGE` | `hello-world.html` | Page in `web-parts/` served at `/` |
+| `PROFILE_REDIRECT_URI` | `http://localhost:7071/auth/callback` | Where the Profile sign-in listens for the callback; must match a redirect URI on the app registration exactly |
+| `PROFILE_CLIENT_SECRET` | none | Profile: client secret, only for a Web-platform redirect URI that needs one. Keep it in `.env` (git-ignored) |
 | `MOCK_CHATTER_MS` | `45000` | Mock: how often fake colleagues post (`MOCK_CHATTER=0` turns it off) |
 | `MOCK_FAIL` | none | Mock: comma-separated tools that return `isError` |
 | `SPFX_SERVE_TENANT_DOMAIN` | none | SharePoint: the tenant that `npm start` opens. Set it in `.env`, which is git-ignored; copy it from `.env.example` (see [deploy.md](deploy.md) §3) |
