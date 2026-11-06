@@ -7,8 +7,6 @@
 //   GET  /__claude-shim.js     -> the shim
 //   POST /__mcp/call           -> { server, tool, input } -> { ok, result } | { ok:false, error }
 //   GET  /__mcp/tools?server=  -> list tools (debugging)
-//   GET  /sharepoint           -> local SharePoint harness: runs the SPFx web part's mount code (see harness/)
-//   GET  /__sp/pages           -> the page registry (pages.json); /__sp/page.js?key= -> one page as a module
 //
 // Env: PORT (default 5173), DEFAULT_PAGE (default hello-world.html)
 
@@ -20,8 +18,6 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { resultError } from "./mcp/teams-core/result-error.js";
-import { pageModule } from "./scripts/codegen.mjs";
-import { loadPages } from "./scripts/pages.mjs";
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT) || 5173;
@@ -32,16 +28,6 @@ const PAGES_DIR = path.join(ROOT, "web-parts");
 const CONFIG_FILE = process.env.MCP_CONFIG || "mcp.config.json";
 const config = JSON.parse(await readFile(path.join(ROOT, CONFIG_FILE), "utf8"));
 const ALLOWED_ORIGINS = new Set([`http://127.0.0.1:${PORT}`, `http://localhost:${PORT}`]);
-
-/* ---------- local SharePoint harness ---------- */
-// Like SharePoint Online: no inline script. Styles may be inline (the page's <style> goes into the iframe).
-const HARNESS_CSP = ["default-src 'self'", "script-src 'self'", "style-src 'self' 'unsafe-inline'", "img-src 'self' data: blob: https:",
-  "connect-src 'self'", "frame-src 'self'", "object-src 'none'", "base-uri 'none'"].join("; ");
-// static modules the harness imports: path -> file (fixed set of folders, basename only)
-const HARNESS_STATIC = [
-  [/^\/host\/([\w-]+\.js)$/, "host"],
-  [/^\/harness\/([\w-]+\.(?:js|css))$/, "harness"],
-];
 
 /* ---------- MCP clients (lazy, reconnect after failure) ---------- */
 const clients = new Map(); // server name -> Promise<Client>
@@ -133,33 +119,6 @@ const server = http.createServer(async (req, res) => {
       if (!config[name]) return json(res, 404, { ok: false, error: { code: "server_not_connected" } });
       const client = await getClient(name);
       return json(res, 200, { ok: true, server: name, tools: (await client.listTools()).tools.map((t) => ({ name: t.name, description: t.description })) });
-    }
-    if (req.method === "GET" && (url.pathname === "/sharepoint" || url.pathname === "/sharepoint/")) {
-      const html = await readFile(path.join(ROOT, "harness", "index.html"), "utf8");
-      res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "content-security-policy": HARNESS_CSP });
-      return res.end(html);
-    }
-    // read pages.json per request, so edits to the registry or the pages show up on reload
-    if (req.method === "GET" && url.pathname === "/__sp/pages") {
-      try { return json(res, 200, { ok: true, pages: (await loadPages()).map(({ key, title, file }) => ({ key, title, file })) }); }
-      catch (e) { return json(res, 200, { ok: false, error: { code: "bad_request", message: e.message } }); }
-    }
-    if (req.method === "GET" && url.pathname === "/__sp/page.js") {
-      let page;
-      try { page = (await loadPages()).find((p) => p.key === url.searchParams.get("key")); }
-      catch (e) { return send(res, 500, "text/plain; charset=utf-8", e.message); }
-      if (!page) return send(res, 404, "text/plain", "Unknown page key");
-      try { return send(res, 200, "text/javascript; charset=utf-8", pageModule(await readFile(path.join(ROOT, page.file), "utf8"))); }
-      catch (e) { return send(res, 500, "text/plain; charset=utf-8", `${page.file}: ${e.message}`); }
-    }
-    if (req.method === "GET") {
-      for (const [re, dir] of HARNESS_STATIC) {
-        const m = re.exec(url.pathname);
-        if (!m) continue;
-        let body;
-        try { body = await readFile(path.join(ROOT, dir, path.basename(m[1]))); } catch { return send(res, 404, "text/plain", "Not found"); }
-        return send(res, 200, m[1].endsWith(".css") ? "text/css; charset=utf-8" : "text/javascript; charset=utf-8", body);
-      }
     }
     if (req.method === "GET" && url.pathname === "/__claude-shim.js") {
       return send(res, 200, "text/javascript; charset=utf-8", await readFile(SHIM_PATH));

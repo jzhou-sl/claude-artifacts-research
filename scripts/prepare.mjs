@@ -1,7 +1,7 @@
 // Generates one SPFx web part per entry in pages.json (see scripts/pages.mjs). Runs before every
 // build and start, so the HTML pages stay the single source of truth:
 //   src/generated/pages/<key>.ts           <- the page: markup (no scripts) + runPage() (see codegen.mjs)
-//   src/generated/mount.ts                 <- host/mount.js: iframe mounting (shared with the local harness)
+//   src/generated/mount.ts                 <- host/mount.js: iframe mounting
 //   src/webparts/<key>/<Key>WebPart.ts     <- a thin subclass of src/PageWebPart.ts
 //   src/webparts/<key>/<Key>WebPart.manifest.json
 //   config/config.json                     <- one bundle per page

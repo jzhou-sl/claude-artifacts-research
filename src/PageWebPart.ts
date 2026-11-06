@@ -1,6 +1,6 @@
 // Base class for every page web part. scripts/prepare.mjs generates one subclass per entry in pages.json
-// (src/webparts/<key>/), which only supplies the page. The mounting logic lives in host/mount.js, shared with
-// the local harness at http://127.0.0.1:5173/sharepoint; this class adds the SharePoint theme and lifecycle.
+// (src/webparts/<key>/), which only supplies the page. The mounting logic lives in host/mount.js; this class adds
+// the SharePoint theme and lifecycle.
 import { Version } from '@microsoft/sp-core-library';
 import { BaseClientSideWebPart } from '@microsoft/sp-webpart-base';
 import type { IReadonlyTheme } from '@microsoft/sp-component-base';

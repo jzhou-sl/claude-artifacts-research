@@ -43,7 +43,7 @@ node dev-server.mjs                        # real Teams (set up first, see below
 | `mcp/teams-core/` | Environment-neutral tool logic used by `mcp/teams` (and kept browser-safe for a later in-browser host): `tools.js` (handlers), `graph.js` (Graph client), `map.js` (Graph → page shapes), `result-error.js` (error mapping) |
 | `mcp/teams/` | Real MCP server: `server.js` (input schemas + registration), `auth.js` / `login.js` (MSAL Node) |
 | `web-parts/` | The HTML pages. `hello-world.html` is deployed to SharePoint as the "Hello world" web part |
-| `package.json`, `config/`, `src/`, `scripts/`, `host/`, `harness/`, `pages.json` | SPFx project (the repo root): one web part per page in `pages.json` (see below and [deploy.md](deploy.md)). `src/PageWebPart.ts` is the shared web part, `host/mount.js` the mount code (also used by the local harness in `harness/`), `scripts/` the generator (`prepare.mjs`, `codegen.mjs`, `pages.mjs`, `add-page.mjs`). `src/webparts/` and `src/generated/` are generated |
+| `package.json`, `config/`, `src/`, `scripts/`, `host/`, `pages.json` | SPFx project (the repo root): one web part per page in `pages.json` (see below and [deploy.md](deploy.md)). `src/PageWebPart.ts` is the shared web part, `host/mount.js` the mount code, `scripts/` the generator (`prepare.mjs`, `codegen.mjs`, `pages.mjs`, `add-page.mjs`). `src/webparts/` and `src/generated/` are generated |
 | `mcp/mock/` | Mock server with in-memory state, seeded from `fixtures.js` |
 
 Config entries can also point at HTTP MCP servers: `{ "url": "https://…/mcp", "headers": { … } }`.
@@ -61,11 +61,9 @@ Each HTML page stays the single source. Before every build and start, `scripts/p
 
 ```sh
 node scripts/add-page.mjs web-parts/my-page.html "My page"   # register a page (path relative to the repo root)
-npm start                                                        # local code on the debug page (deploy.md §4)
+npm start                                                        # local code on the debug page (deploy.md §3)
 npm run build                                                    # → sharepoint/solution/intranet-html-pages.sppkg
 ```
-
-To test without SharePoint, run `node --env-file=.env.mock dev-server.mjs` and open <http://127.0.0.1:5173/sharepoint>. The harness mounts any registered page with the web parts' own mount code, under a SharePoint-like CSP.
 
 **See [deploy.md](deploy.md)** for page rules, testing on a real SharePoint page, building, the App Catalog and putting the web parts on pages.
 
@@ -89,7 +87,7 @@ This is a least-privilege MCP server with one tool, `get_me`, which returns the 
 | `DEFAULT_PAGE` | `hello-world.html` | Page in `web-parts/` served at `/` |
 | `MOCK_CHATTER_MS` | `45000` | Mock: how often fake colleagues post (`MOCK_CHATTER=0` turns it off) |
 | `MOCK_FAIL` | none | Mock: comma-separated tools that return `isError` |
-| `SPFX_SERVE_TENANT_DOMAIN` | none | SharePoint: the tenant that `npm start` opens. Set it in `.env`, which is git-ignored; copy it from `.env.example` (see [deploy.md](deploy.md) §4) |
+| `SPFX_SERVE_TENANT_DOMAIN` | none | SharePoint: the tenant that `npm start` opens. Set it in `.env`, which is git-ignored; copy it from `.env.example` (see [deploy.md](deploy.md) §3) |
 
 ## Error mapping
 

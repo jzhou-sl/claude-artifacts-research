@@ -13,7 +13,7 @@ HTML page ─► npm run build ─► .sppkg ─► App Catalog ─► site ─�
 - **Edit rights** on the target site.
 - The web parts request no API permissions, so no admin approval is needed.
 - Run `npm install` in the repo root once.
-- **For testing on SharePoint (section 4):** a `.env` file (copied from `.env.example`), and a debug page you can edit (by default `NewcastleSocialCommittee/SitePages/SPFx-dev.aspx`).
+- **For testing on SharePoint (section 3):** a `.env` file (copied from `.env.example`), and a debug page you can edit (by default `NewcastleSocialCommittee/SitePages/SPFx-dev.aspx`).
 
 ## 2. Add a page
 
@@ -31,11 +31,7 @@ node scripts/add-page.mjs web-parts/my-page.html "My page" "Optional description
 
 This appends an entry with a new permanent `id` to `pages.json`. You can edit `title`, `description` and `icon` (a Fluent UI icon name). **Never change `id` once deployed**: SharePoint uses it to find the web part on every page.
 
-## 3. Test locally
-
-From the repo root, run `node --env-file=.env.mock dev-server.mjs` and open <http://127.0.0.1:5173/sharepoint>. The header lets you pick a web part, toggle a dark theme and remount it. Fix any **CSP violation** it reports in red before deploying.
-
-## 4. Test on SharePoint with your local code
+## 3. Test on SharePoint with your local code
 
 This runs your local code on a real page, and only you see it. The hosted workbench (`/_layouts/workbench.aspx`) is **retired on 1 December 2026**. Microsoft's replacement is the **SPFx debugging toolbar** on a normal modern page. We use a dedicated debug page, so the intranet's real pages are never touched.
 
@@ -59,14 +55,14 @@ It rebuilds when you save, so reload the page to see changes. **Stop** on the de
 **Testing on a different page:** run `npm start -- --nobrowser`, then open any modern page you can edit and add this to the end of its URL (use `&` if the URL already has a `?`):
 `?debug=true&noredir=true&debugManifestsFile=https://localhost:4321/temp/build/manifests.js`
 
-## 5. Build the package
+## 4. Build the package
 
 1. **Stop `npm start` first.** Otherwise its dev files end up in the package.
 2. Bump `version` in `config/package-solution.json` (for example `1.0.0.0` → `1.0.1.0`).
 3. `npm run build`.
 4. Your package is `sharepoint/solution/intranet-html-pages.sppkg`. It should be about 15–20 KB plus a few KB per page. If it's hundreds of KB, the dev server was still running.
 
-## 6. Upload to the App Catalog
+## 5. Upload to the App Catalog
 
 1. Open the catalog:
    - **Tenant:** SharePoint admin center → **More features** → **Apps** → **Open**.
@@ -75,11 +71,11 @@ It rebuilds when you save, so reload the page to see changes. **Stop** on the de
 3. In the trust dialog, choose **Only enable this app** or **Enable this app and add it to all sites**, then **Enable app**.
 4. Check that the **App Package Error Message** column is empty.
 
-## 7. Install on a site
+## 6. Install on a site
 
 Skip this if you added the app to all sites. Otherwise, on the site: gear icon → **Add an app** → **intranet-html-pages**. Then wait until it shows as installed in **Site contents**.
 
-## 8. Put a web part on a page
+## 7. Put a web part on a page
 
 - **Normal page:** gear icon → **Add a page**. Add a **Full-width section** (communication sites) or **One column**. Click the **+** *inside* the section (the one on the left edge adds a section), search for the title, then **Publish**.
 - **Full-page app** (PnP PowerShell; `-ClientId` is the PnP Entra app registered in our tenant, so ask IT):
@@ -90,20 +86,20 @@ Skip this if you added the app to all sites. Otherwise, on the site: gear icon �
   Set-PnPPage -Identity "Hello" -Publish
   ```
 
-## 9. Update or remove
+## 8. Update or remove
 
 - **Update or add pages:** edit the HTML or run `add-page`, bump `version`, rebuild, and re-upload. Existing pages pick up the change.
 - **Remove a web part:** delete it from its pages, remove its `pages.json` entry, then rebuild and re-upload.
 - **Remove everything:** remove the app from each site (Site contents), then delete the package from the App Catalog.
 
-## 10. Troubleshooting
+## 9. Troubleshooting
 
 | Symptom | Fix |
 |---|---|
 | Local web part missing from the toolbox | Make sure `npm start` is running. Open <https://localhost:4321/temp/build/manifests.js> and accept any certificate warning. Check that the site's **Local network access** permission is **Allow** and that you chose **Load debug scripts**. |
-| `npm start` warns that `SPFX_SERVE_TENANT_DOMAIN is not set`, or the browser opens a URL containing `{tenantDomain}` | Create `.env` from `.env.example` (section 4). |
-| The debug page returns 404 | The page in `initialPage` (`config/serve.json`) doesn't exist, or its file name differs from its title. Open the page yourself and copy the URL from the address bar into `initialPage` (section 4). |
-| Empty canvas, or **+** shows layout options | That's normal. Use the **+** inside a section (section 8). |
+| `npm start` warns that `SPFX_SERVE_TENANT_DOMAIN is not set`, or the browser opens a URL containing `{tenantDomain}` | Create `.env` from `.env.example` (section 3). |
+| The debug page returns 404 | The page in `initialPage` (`config/serve.json`) doesn't exist, or its file name differs from its title. Open the page yourself and copy the URL from the address bar into `initialPage` (section 3). |
+| Empty canvas, or **+** shows layout options | That's normal. Use the **+** inside a section (section 7). |
 | `getPageBasicInfo` / `ComponentPerfLogger` console errors | SharePoint's own telemetry. They're harmless. |
 | `Invalid pages.json` or `at most one inline <script>` | Fix what the message lists. |
 | Package is hundreds of KB | Stop `npm start` and rebuild. |

@@ -1,5 +1,5 @@
 // The page registry (pages.json): one entry per HTML page, each built as its own web part.
-// Shared by prepare.mjs (SPFx build), add-page.mjs and dev-server.js (local harness).
+// Shared by prepare.mjs (SPFx build) and add-page.mjs.
 //
 //   { "file": "web-parts/hello-world.html",  // relative to the repo root
 //     "id": "7c081f09-…",                    // the web part's permanent GUID: never change it once deployed

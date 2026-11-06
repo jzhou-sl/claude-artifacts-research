@@ -1,5 +1,4 @@
-// Mounts an HTML page into a container the way the SharePoint web part does. Shared by the SPFx web part
-// (src/PageWebPart.ts) and the local harness (harness/harness.js), so local tests run this exact code.
+// Mounts an HTML page into a container for the SharePoint web part (src/PageWebPart.ts).
 //
 //   const app = mountPage(container, { page: { markup, runPage }, dark });   // page from codegen pageModule()
 //   app.setDark(true); app.fit(); app.dispose();
