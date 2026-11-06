@@ -32,11 +32,15 @@ const ALLOWED_ORIGINS = new Set([`http://127.0.0.1:${PORT}`, `http://localhost:$
 /* ---------- MCP clients (lazy, reconnect after failure) ---------- */
 const clients = new Map(); // server name -> Promise<Client>
 
+// Config env values override the environment, except "<…>" placeholders (as in mcp.config.json), so
+// values from .env (node --env-file=.env dev-server.mjs) still apply.
+const configEnv = (env = {}) => Object.fromEntries(Object.entries(env).filter(([, v]) => !/^<.*>$/.test(String(v))));
+
 function connect(name) {
   const cfg = config[name];
   const transport = cfg.url
     ? new StreamableHTTPClientTransport(new URL(cfg.url), { requestInit: { headers: cfg.headers || {} } })
-    : new StdioClientTransport({ command: cfg.command, args: cfg.args || [], env: { ...process.env, ...(cfg.env || {}) }, cwd: cfg.cwd || ROOT, stderr: "inherit" });
+    : new StdioClientTransport({ command: cfg.command, args: cfg.args || [], env: { ...process.env, ...configEnv(cfg.env) }, cwd: cfg.cwd || ROOT, stderr: "inherit" });
   const client = new Client({ name: "artifact-dev-bridge", version: "0.1.0" });
   client.onclose = () => { console.warn(`[bridge] "${name}" disconnected`); clients.delete(name); };
   client.onerror = (e) => console.warn(`[bridge] "${name}" error:`, e?.message || e);

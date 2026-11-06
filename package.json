@@ -9,7 +9,8 @@
     "prebuild": "node scripts/prepare.mjs",
     "build": "heft test --clean --production && heft package-solution --production",
     "prestart": "node --env-file-if-exists=.env scripts/prepare.mjs --serve",
-    "start": "node --env-file-if-exists=.env node_modules/@rushstack/heft/bin/heft start --clean"
+    "start": "node --env-file-if-exists=.env node_modules/@rushstack/heft/bin/heft start --clean",
+    "serve:profile": "node --env-file-if-exists=.env scripts/serve-profile.mjs"
   },
   "dependencies": {
     "tslib": "2.3.1",

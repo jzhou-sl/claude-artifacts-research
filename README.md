@@ -79,6 +79,7 @@ This is a least-privilege MCP server with two tools: `get_me` returns the signed
 2. Put the tenant ID and client ID in `.env` as `PROFILE_TENANT_ID` and `PROFILE_CLIENT_ID`, or under the `Profile` entry's `env` in `mcp.config.json`.
 3. Run `node --env-file-if-exists=.env mcp/profile/login.mjs`. Its token cache is separate from the Teams one, at `%LOCALAPPDATA%\profile-mcp\msal-cache.bin`. To sign out, run `node --env-file-if-exists=.env mcp/profile/login.mjs --logout`.
 4. To run it on its own, use `node --env-file-if-exists=.env mcp/profile/server.mjs` (stdio). `node dev-server.mjs` also exposes it to pages as the `Profile` server.
+5. To serve the "My profile" page locally with real data, run `npm run serve:profile`. It loads `.env`, signs you in first if there's no cached token, then starts the dev server with `profile-card.html` at <http://127.0.0.1:7071/> (set `PROFILE_PORT` to change the port).
 
 `web-parts/profile-card.html` (the "My profile" web part) calls it. On SharePoint the web part runs the same `get_me` handler in the browser instead, so it needs neither this app registration nor a sign-in step there.
 
@@ -91,6 +92,7 @@ This is a least-privilege MCP server with two tools: `get_me` returns the signed
 | `DEFAULT_PAGE` | `hello-world.html` | Page in `web-parts/` served at `/` |
 | `PROFILE_REDIRECT_URI` | `http://localhost:7071/auth/callback` | Where the Profile sign-in listens for the callback; must match a redirect URI on the app registration exactly |
 | `PROFILE_CLIENT_SECRET` | none | Profile: client secret, only for a Web-platform redirect URI that needs one. Keep it in `.env` (git-ignored) |
+| `PROFILE_PORT` | `7071` | Port for `npm run serve:profile` (it sets `PORT` for the dev server) |
 | `MOCK_CHATTER_MS` | `45000` | Mock: how often fake colleagues post (`MOCK_CHATTER=0` turns it off) |
 | `MOCK_FAIL` | none | Mock: comma-separated tools that return `isError` |
 | `SPFX_SERVE_TENANT_DOMAIN` | none | SharePoint: the tenant that `npm start` opens. Set it in `.env`, which is git-ignored; copy it from `.env.example` (see [deploy.md](deploy.md) §3) |
