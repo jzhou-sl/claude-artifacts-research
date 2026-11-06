@@ -13,7 +13,7 @@ HTML page ─► npm run build ─► .sppkg ─► App Catalog ─► site ─�
 - **Edit rights** on the target site.
 - The web parts request no API permissions, so no admin approval is needed.
 - Run `npm install` in `sharepoint/` once.
-- **For testing on SharePoint (section 4):** the `SPFX_SERVE_TENANT_DOMAIN` environment variable, and a debug page you can edit (by default `NewcastleSocialCommittee/SitePages/SPFx-dev.aspx`).
+- **For testing on SharePoint (section 4):** a `sharepoint/.env` file (copied from `.env.example`), and a debug page you can edit (by default `NewcastleSocialCommittee/SitePages/SPFx-dev.aspx`).
 
 ## 2. Add a page
 
@@ -41,11 +41,11 @@ This runs your local code on a real page, and only you see it. The hosted workbe
 
 **One-time setup:**
 
-1. Tell the dev server your tenant, then open a new shell:
+1. Tell the dev server your tenant. In `sharepoint/`, copy `.env.example` to `.env`; it's git-ignored and already set to `scottlogic.sharepoint.com`:
    ```powershell
-   setx SPFX_SERVE_TENANT_DOMAIN scottlogic.sharepoint.com
+   Copy-Item .env.example .env
    ```
-   `sharepoint/config/serve.json` and the VS Code **Debug on SharePoint page** launch config fill in `{tenantDomain}` from this variable.
+   `npm start` loads `.env` and fills in `{tenantDomain}` in `config/serve.json`. The VS Code **Debug on SharePoint page** launch config can't read `.env`. To use it, also set the variable for your Windows user once with `setx SPFX_SERVE_TENANT_DOMAIN scottlogic.sharepoint.com`, then restart VS Code.
 2. Have a debug page. The default is `https://scottlogic.sharepoint.com/sites/NewcastleSocialCommittee/SitePages/SPFx-dev.aspx`. To use your own, create a page on any site where you have edit rights (**+ New → Page**, blank, then **Publish**). Then put its URL in `initialPage` in `sharepoint/config/serve.json` (keep `{tenantDomain}`) and in `sharepoint/.vscode/launch.json`. Creating a site isn't needed: most users can't, and a page is enough.
 
 **Each time:**
@@ -101,7 +101,7 @@ Skip this if you added the app to all sites. Otherwise, on the site: gear icon �
 | Symptom | Fix |
 |---|---|
 | Local web part missing from the toolbox | Make sure `npm start` is running. Open <https://localhost:4321/temp/build/manifests.js> and accept any certificate warning. Check that the site's **Local network access** permission is **Allow** and that you chose **Load debug scripts**. |
-| `npm start` warns that `SPFX_SERVE_TENANT_DOMAIN is not set`, or the browser opens a URL containing `{tenantDomain}` | Run the `setx` command in section 4 and open a new shell. |
+| `npm start` warns that `SPFX_SERVE_TENANT_DOMAIN is not set`, or the browser opens a URL containing `{tenantDomain}` | Create `sharepoint/.env` from `.env.example` (section 4). |
 | The debug page returns 404 | The page in `initialPage` (`sharepoint/config/serve.json`) doesn't exist, or its file name differs from its title. Open the page yourself and copy the URL from the address bar into `initialPage` (section 4). |
 | Empty canvas, or **+** shows layout options | That's normal. Use the **+** inside a section (section 8). |
 | `getPageBasicInfo` / `ComponentPerfLogger` console errors | SharePoint's own telemetry. They're harmless. |

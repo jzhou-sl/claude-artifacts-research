@@ -9,7 +9,7 @@
     "prebuild": "node scripts/prepare.mjs",
     "build": "heft test --clean --production && heft package-solution --production",
     "prestart": "node scripts/prepare.mjs",
-    "start": "heft start --clean",
+    "start": "node --env-file-if-exists=.env node_modules/@rushstack/heft/bin/heft start --clean",
     "add-page": "node scripts/add-page.mjs",
     "clean": "heft clean",
     "eject-webpack": "heft eject-webpack"

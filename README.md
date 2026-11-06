@@ -79,6 +79,7 @@ To test without SharePoint, run `npm run dev:mock` and open <http://127.0.0.1:51
 | `DEFAULT_PAGE` | `hello-world.html` | Page served at `/` |
 | `MOCK_CHATTER_MS` | `45000` | Mock: how often fake colleagues post (`MOCK_CHATTER=0` turns it off) |
 | `MOCK_FAIL` | none | Mock: comma-separated tools that return `isError` |
+| `SPFX_SERVE_TENANT_DOMAIN` | none | SharePoint: the tenant that `npm start` in `sharepoint/` opens. Set it in `sharepoint/.env`, which is git-ignored; copy it from `.env.example` (see [deploy.md](deploy.md) §4) |
 
 ## Error mapping
 
