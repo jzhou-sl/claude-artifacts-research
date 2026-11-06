@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // profile-mcp: a least-privilege MCP server (stdio) over Microsoft Graph using only the delegated
-// User.Read permission. One tool, get_me, with the same result shape as teams-mcp's get_me.
-// The handler lives in tool.mjs, shared with the SharePoint web part.
+// User.Read permission. Tools: get_me (same result shape as teams-mcp's get_me)
+// and get_my_photo (GET /me/photo/$value as an image block). The handlers live in tool.mjs, shared with the SharePoint web part.
 // Sign in first with `node --env-file-if-exists=.env mcp/profile/login.mjs`.
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";

@@ -41,7 +41,7 @@ node dev-server.mjs                        # real Teams (set up first, see below
 | `dev-server.mjs` | Injects the shim, bridges calls to MCP servers, and rejects calls from other origins |
 | `mcp.config.json` / `mcp.config.mock.json` | Server name → MCP server, for real and mock mode (selected with `MCP_CONFIG`) |
 | `mcp/teams-core/` | Environment-neutral tool logic used by `mcp/teams` (and kept browser-safe for a later in-browser host): `tools.js` (handlers), `graph.js` (Graph client), `map.js` (Graph → page shapes), `result-error.js` (error mapping) |
-| `mcp/profile/` | `User.Read`-only MCP server: `server.mjs` (registration), `tool.mjs` (the `get_me` handler, browser-safe and also bundled into SharePoint web parts), `auth.mjs` / `login.mjs` (MSAL Node) |
+| `mcp/profile/` | `User.Read`-only MCP server: `server.mjs` (registration), `tool.mjs` (the `get_me` and `get_my_photo` handlers, browser-safe and also bundled into SharePoint web parts), `auth.mjs` / `login.mjs` (MSAL Node) |
 | `mcp/teams/` | Real MCP server: `server.js` (input schemas + registration), `auth.js` / `login.js` (MSAL Node) |
 | `web-parts/` | The HTML pages. `hello-world.html` and `profile-card.html` are deployed to SharePoint as the "Hello world" and "My profile" web parts |
 | `package.json`, `config/`, `src/`, `scripts/`, `host/`, `pages.json` | SPFx project (the repo root): one web part per page in `pages.json` (see below and [deploy.md](deploy.md)). `src/PageWebPart.ts` is the shared web part (`src/McpPageWebPart.ts` for pages that use MCP), `host/mount.js` the mount code, `scripts/` the generator (`prepare.mjs`, `codegen.mjs`, `pages.mjs`, `add-page.mjs`). `src/webparts/` and `src/generated/` are generated |
@@ -71,7 +71,7 @@ npm run build                                                    # → sharepoin
 
 ## Profile server, `User.Read` only (`mcp/profile`)
 
-This is a least-privilege MCP server with one tool, `get_me`, which returns the signed-in user's profile. Its result has the same shape as the Teams server's `get_me`. It needs only the delegated `User.Read` permission, so no admin consent is required.
+This is a least-privilege MCP server with two tools: `get_me` returns the signed-in user's profile, with the same result shape as the Teams server's `get_me`, and `get_my_photo` returns their profile photo (`GET /me/photo/$value`) as an MCP `image` block, or just a text block when no photo is set. It needs only the delegated `User.Read` permission, so no admin consent is required.
 
 1. **App registration**: use a separate app with just one permission.
    - Authentication: platform *Mobile and desktop applications*, redirect URI `http://localhost`.

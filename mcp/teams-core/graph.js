@@ -23,9 +23,10 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
  * graph("GET", "/me", { scopes, query: { $select: "id" } })
  * graph("GET", nextLink, { scopes })            // absolute Graph URL
  * graph("POST", "/chats/x/messages", { scopes, body })
+ * graph("GET", "/me/photo/$value", { scopes, binary: true })   // -> { contentType, bytes: Uint8Array }
  */
 export function createGraph(getToken) {
-  async function graph(method, pathOrUrl, { scopes, query, body, headers } = {}) {
+  async function graph(method, pathOrUrl, { scopes, query, body, headers, binary = false } = {}) {
     let url = pathOrUrl.startsWith("https://") ? checkNextLink(pathOrUrl) : GRAPH + pathOrUrl;
     if (query) {
       const qs = Object.entries(query).filter(([, v]) => v != null && v !== "").map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join("&");
@@ -35,10 +36,13 @@ export function createGraph(getToken) {
       const token = await getToken(scopes);
       const res = await fetch(url, {
         method,
-        headers: { authorization: `Bearer ${token}`, accept: "application/json", ...(body ? { "content-type": "application/json" } : {}), ...headers },
+        headers: { authorization: `Bearer ${token}`, accept: binary ? "*/*" : "application/json", ...(body ? { "content-type": "application/json" } : {}), ...headers },
         body: body ? JSON.stringify(body) : undefined,
       });
       if (res.status === 204) return null;
+      if (binary && res.ok) {
+        return { contentType: res.headers.get("content-type") || "application/octet-stream", bytes: new Uint8Array(await res.arrayBuffer()) };
+      }
       const text = await res.text();
       let data = null;
       try { data = text ? JSON.parse(text) : null; } catch { data = { raw: text }; }

@@ -17,7 +17,8 @@ body{background:var(--bg);color:var(--text);font:15px/1.5 "Segoe UI",system-ui,-
 .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:24px;max-width:520px;width:100%}
 .head{display:flex;align-items:center;gap:16px}
 .avatar{flex:none;width:64px;height:64px;border-radius:50%;background:var(--accent);color:var(--accent-ink);
-        display:grid;place-items:center;font-size:24px;font-weight:600;letter-spacing:.5px}
+        display:grid;place-items:center;font-size:24px;font-weight:600;letter-spacing:.5px;overflow:hidden}
+.avatar img{width:100%;height:100%;object-fit:cover}
 .who{min-width:0;flex:1}
 h1{margin:0;font-size:22px;line-height:1.25;overflow-wrap:anywhere}
 .role{margin:2px 0 0;color:var(--muted)}
@@ -127,7 +128,7 @@ button:disabled{opacity:.6;cursor:default}
     var when = storedAt ? new Date(storedAt) : new Date();
     render([
       h("div", { class: "head" }, [
-        h("div", { class: "avatar", "aria-hidden": "true" }, initials(me)),
+        h("div", { class: "avatar", id: "avatar", "aria-hidden": "true" }, initials(me)),
         h("div", { class: "who" }, [h("h1", null, me.displayName || me.mail || "Unknown user"), me.jobTitle ? h("p", { class: "role" }, me.jobTitle) : null]),
       ]),
       details.length ? h("dl", null, details) : null,
@@ -150,6 +151,21 @@ button:disabled{opacity:.6;cursor:default}
     }
   }
 
+  // get_my_photo returns an image block, or only a text block when no photo is set. The initials stay
+  // in place until the photo arrives, and if there's no photo or the call fails.
+  async function loadPhoto(refresh) {
+    try {
+      var result = await mcp.callTool(SERVER, "get_my_photo", {}, refresh ? { cache: { refresh: true } } : undefined);
+      var img = (result && result.content || []).filter(function (b) { return b && b.type === "image" && b.data; })[0];
+      var avatar = document.getElementById("avatar");
+      if (!img || !avatar) return;
+      var el = h("img", { alt: "", src: "data:" + (img.mimeType || "image/jpeg") + ";base64," + img.data });
+      el.addEventListener("load", function () { avatar.replaceChildren(el); });
+    } catch (e) {
+      console.warn("[profile-card] photo:", e && (e.message || e.code) || e);
+    }
+  }
+
   async function load(refresh) {
     root.setAttribute("aria-busy", "true");
     try {
@@ -157,6 +173,7 @@ button:disabled{opacity:.6;cursor:default}
       var me = parseProfile(result);
       if (!me || !me.id) throw { code: "upstream_error", message: "No profile was returned." };
       showProfile(me, result.cache && result.cache.storedAt);
+      loadPhoto(refresh);
     } catch (e) {
       showError(e, true);
     }
