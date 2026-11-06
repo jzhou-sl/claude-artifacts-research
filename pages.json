@@ -6,5 +6,16 @@
     "title": "Hello world",
     "description": "A simple hello world page.",
     "icon": "Emoji2"
+  },
+  {
+    "file": "web-parts/profile-card.html",
+    "id": "4bcddda0-a87b-41e2-8534-1fb79edfe7e7",
+    "key": "profileCard",
+    "title": "My profile",
+    "description": "Your Microsoft 365 profile: name, job title, department, office and contact details.",
+    "icon": "Contact",
+    "mcp": [
+      "Profile"
+    ]
   }
 ]

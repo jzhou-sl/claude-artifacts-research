@@ -1,3 +1,4 @@
 {
-  "Microsoft 365": { "command": "node", "args": ["mcp/mock/server.js"] }
+  "Microsoft 365": { "command": "node", "args": ["mcp/mock/server.js"] },
+  "Profile": { "command": "node", "args": ["mcp/mock/server.js"] }
 }

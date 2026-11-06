@@ -11,7 +11,7 @@ HTML page ─► npm run build ─► .sppkg ─► App Catalog ─► site ─�
 - **Node.js 22 or 24**, about **1.5 GB** of free disk, and **Edge** (or Chrome).
 - **Upload rights to an App Catalog:** either the tenant one (usually SharePoint admins) or a site collection App Catalog on the intranet site.
 - **Edit rights** on the target site.
-- The web parts request no API permissions, so no admin approval is needed.
+- The package requests one Microsoft Graph permission, delegated `User.Read`, for the "My profile" web part. An admin approves it once after the first upload (section 5). The other web parts don't use it.
 - Run `npm install` in the repo root once.
 - **For testing on SharePoint (section 3):** a `.env` file (copied from `.env.example`), and a debug page you can edit (by default `NewcastleSocialCommittee/SitePages/SPFx-dev.aspx`).
 
@@ -29,7 +29,7 @@ Put the page in `web-parts/` and register it. The path is relative to the repo r
 node scripts/add-page.mjs web-parts/my-page.html "My page" "Optional description"
 ```
 
-This appends an entry with a new permanent `id` to `pages.json`. You can edit `title`, `description` and `icon` (a Fluent UI icon name). **Never change `id` once deployed**: SharePoint uses it to find the web part on every page.
+This appends an entry with a new permanent `id` to `pages.json`. You can edit `title`, `description` and `icon` (a Fluent UI icon name). A page that calls MCP servers through `window.claude.use("mcp")` lists them in `mcp`, for example `"mcp": ["Profile"]` (the only one available in SharePoint; see `web-parts/profile-card.html`). It also works locally through `node dev-server.mjs`. **Never change `id` once deployed**: SharePoint uses it to find the web part on every page.
 
 ## 3. Test on SharePoint with your local code
 
@@ -70,6 +70,7 @@ It rebuilds when you save, so reload the page to see changes. **Stop** on the de
 2. **Upload** the `.sppkg`, and confirm **replace** if an older version exists.
 3. In the trust dialog, choose **Only enable this app** or **Enable this app and add it to all sites**, then **Enable app**.
 4. Check that the **App Package Error Message** column is empty.
+5. **Approve the Graph permission** (first upload only, needs a SharePoint or Global admin): SharePoint admin center → **Advanced** → **API access** → approve the pending **Microsoft Graph, User.Read** request from `intranet-html-pages`. Until then, "My profile" shows a message asking for this approval.
 
 ## 6. Install on a site
 
@@ -103,4 +104,5 @@ Skip this if you added the app to all sites. Otherwise, on the site: gear icon �
 | `getPageBasicInfo` / `ComponentPerfLogger` console errors | SharePoint's own telemetry. They're harmless. |
 | `Invalid pages.json` or `at most one inline <script>` | Fix what the message lists. |
 | Package is hundreds of KB | Stop `npm start` and rebuild. |
+| "My profile" says an admin needs to approve the Graph permissions | Approve the pending `User.Read` request under SharePoint admin center → Advanced → API access (section 5). |
 | Web part errors on a deployed page | Check the app is installed on that site, and that its `id` hasn't changed. |

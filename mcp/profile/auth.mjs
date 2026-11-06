@@ -1,6 +1,6 @@
 // MSAL public-client auth for profile-mcp: delegated User.Read only, cached on disk with DPAPI (Windows),
 // Keychain (macOS) or libsecret (Linux) via @azure/msal-node-extensions. Separate cache from teams-mcp.
-import { PublicClientApplication, InteractionRequiredAuthError } from "@azure/msal-node";
+import { PublicClientApplication, ConfidentialClientApplication, InteractionRequiredAuthError } from "@azure/msal-node";
 import { PersistenceCreator, PersistenceCachePlugin, DataProtectionScope } from "@azure/msal-node-extensions";
 import { readFileSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
@@ -28,7 +28,10 @@ function loadConfig() {
   const guid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   if (!guid.test(clientId || "")) throw new AuthError("not_configured", "PROFILE_CLIENT_ID is missing or not a GUID. Set it in .env or mcp.config.json (env) to your app registration's Application (client) ID.");
   if (!guid.test(tenantId || "") && !/^[\w.-]+\.[a-z]{2,}$/i.test(tenantId || "")) throw new AuthError("not_configured", "PROFILE_TENANT_ID is missing. Set it in .env or mcp.config.json (env) to your Directory (tenant) ID or domain.");
-  return { tenantId, clientId };
+  // Optional. Only needed when the redirect URI is registered under the Web platform and Entra refuses to
+  // redeem the sign-in code without a secret (AADSTS7000218). Then the app signs in as a confidential client.
+  const clientSecret = process.env.PROFILE_CLIENT_SECRET || undefined;
+  return { tenantId, clientId, clientSecret };
 }
 
 const CACHE_DIR = path.join(process.env.LOCALAPPDATA || path.join(os.homedir(), ".cache"), "profile-mcp");
@@ -37,7 +40,7 @@ export const CACHE_PATH = path.join(CACHE_DIR, "msal-cache.bin");
 let pcaPromise = null;
 export function getPca() {
   pcaPromise ||= (async () => {
-    const { tenantId, clientId } = loadConfig();
+    const { tenantId, clientId, clientSecret } = loadConfig();
     await mkdir(CACHE_DIR, { recursive: true });
     const persistence = await PersistenceCreator.createPersistence({
       cachePath: CACHE_PATH,
@@ -46,10 +49,11 @@ export function getPca() {
       accountName: "msal-cache",
       usePlaintextFileOnLinux: false,
     });
-    return new PublicClientApplication({
-      auth: { clientId, authority: `https://login.microsoftonline.com/${tenantId}` },
+    const config = {
+      auth: { clientId, authority: `https://login.microsoftonline.com/${tenantId}`, ...(clientSecret ? { clientSecret } : {}) },
       cache: { cachePlugin: new PersistenceCachePlugin(persistence) },
-    });
+    };
+    return clientSecret ? new ConfidentialClientApplication(config) : new PublicClientApplication(config);
   })();
   pcaPromise.catch(() => { pcaPromise = null; });
   return pcaPromise;

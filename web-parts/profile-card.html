@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>My Profile</title>
+<style>
+:root{--bg:#f7f7f8;--card:#ffffff;--text:#1f1f24;--muted:#5c5c66;--accent:#0f6cbd;--accent-ink:#ffffff;--line:#e3e3e8;--skel:#ececf0;--danger:#b3261e}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){--bg:#17171c;--card:#212128;--text:#ececf1;--muted:#a3a3ad;--accent:#5aa9f0;--accent-ink:#0d1b2a;--line:#33333c;--skel:#2c2c34;--danger:#f2b8b5}
+}
+:root[data-theme="dark"]{--bg:#17171c;--card:#212128;--text:#ececf1;--muted:#a3a3ad;--accent:#5aa9f0;--accent-ink:#0d1b2a;--line:#33333c;--skel:#2c2c34;--danger:#f2b8b5}
+*{box-sizing:border-box}
+html,body{min-height:100%;margin:0}
+body{background:var(--bg);color:var(--text);font:15px/1.5 "Segoe UI",system-ui,-apple-system,sans-serif;
+     display:grid;place-items:center;padding:24px 16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:24px;max-width:520px;width:100%}
+.head{display:flex;align-items:center;gap:16px}
+.avatar{flex:none;width:64px;height:64px;border-radius:50%;background:var(--accent);color:var(--accent-ink);
+        display:grid;place-items:center;font-size:24px;font-weight:600;letter-spacing:.5px;overflow:hidden}
+.avatar img{width:100%;height:100%;object-fit:cover}
+.who{min-width:0;flex:1}
+h1{margin:0;font-size:22px;line-height:1.25;overflow-wrap:anywhere}
+.role{margin:2px 0 0;color:var(--muted)}
+dl{margin:20px 0 0;display:grid;grid-template-columns:auto 1fr;gap:8px 16px}
+dt{color:var(--muted)}
+dd{margin:0;overflow-wrap:anywhere}
+a{color:var(--accent)}
+.foot{margin-top:20px;display:flex;justify-content:space-between;align-items:center;gap:12px;color:var(--muted);font-size:13px}
+button{font:inherit;font-size:14px;padding:6px 14px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--text);cursor:pointer}
+button:hover{border-color:var(--accent)}
+button:disabled{opacity:.6;cursor:default}
+.skel{background:var(--skel);border-radius:6px;animation:pulse 1.4s ease-in-out infinite}
+.skel.line{height:14px;margin:8px 0}
+.w40{width:40%}.w60{width:60%}.w70{width:70%}.w80{width:80%}.gap{margin-top:24px}
+@keyframes pulse{50%{opacity:.5}}
+@media (prefers-reduced-motion: reduce){.skel{animation:none}}
+.error h1{font-size:18px;color:var(--danger)}
+.error p{margin:8px 0 0;color:var(--muted)}
+[hidden]{display:none !important}
+</style>
+</head>
+<body>
+<main class="card" id="root" aria-live="polite" aria-busy="true">
+  <div class="head">
+    <div class="avatar skel" aria-hidden="true"></div>
+    <div class="who"><div class="skel line w60"></div><div class="skel line w40"></div></div>
+  </div>
+  <div class="skel line w80 gap"></div>
+  <div class="skel line w70"></div>
+</main>
+<script>
+(function () {
+  var SERVER = "Profile";
+  var root = document.getElementById("root");
+  var mcp = null;
+
+  function h(tag, attrs, children) {
+    var el = document.createElement(tag);
+    if (attrs) for (var k in attrs) if (attrs[k] != null) el.setAttribute(k, attrs[k]);
+    [].concat(children == null ? [] : children).forEach(function (c) {
+      if (c != null) el.append(c);
+    });
+    return el;
+  }
+
+  // get_me returns one JSON object in a text block (compact from mcp/profile, indented from the mock)
+  function parseProfile(result) {
+    var block = (result && result.content || []).filter(function (b) { return b && b.type === "text" && b.text; })[0];
+    try { return block ? JSON.parse(block.text) : null; } catch (e) { return null; }
+  }
+
+  function initials(me) {
+    var parts = [me.givenName, me.surname].filter(Boolean);
+    if (!parts.length) parts = String(me.displayName || me.mail || "?").split(/\s+/);
+    var s = parts.slice(0, 2).map(function (p) { return p.charAt(0); }).join("");
+    if (parts.length === 1 && !(me.givenName || me.surname)) s = parts[0].slice(0, 2);
+    return s.toUpperCase();
+  }
+
+  function explain(e) {
+    var code = e && e.code;
+    var help = window.claude && window.claude.help; // host-specific wording (e.g. the SharePoint web part)
+    if (help && code && help[code]) return help[code];
+    switch (code) {
+      case "needs_reauth": return "Your Microsoft 365 sign-in has lapsed. Run `node --env-file-if-exists=.env mcp/profile/login.mjs`, then retry.";
+      case "server_not_connected": return "The Profile server isn’t configured. Add a \"Profile\" entry to your MCP config, then reload.";
+      case "server_unavailable": return "The Profile server didn’t respond. Try again in a moment.";
+      case "not_granted": case "capability_disabled": case "capability_removed": return "This view can’t reach the Profile server.";
+      default: return (e && e.message) || "Something went wrong loading your profile.";
+    }
+  }
+
+  function render(node) {
+    root.replaceChildren.apply(root, [].concat(node));
+  }
+
+  function showError(e, canRetry) {
+    root.classList.add("error");
+    root.setAttribute("aria-busy", "false");
+    var kids = [h("h1", null, "Couldn’t load your profile"), h("p", null, explain(e))];
+    if (canRetry) kids.push(h("div", { class: "foot" }, [h("span"), button("Retry", function () { load(true); })]));
+    render(kids);
+  }
+
+  function button(label, onClick) {
+    var b = h("button", { type: "button" }, label);
+    b.addEventListener("click", function () { b.disabled = true; onClick(); });
+    return b;
+  }
+
+  function row(label, value) {
+    return value ? [h("dt", null, label), h("dd", null, value)] : [];
+  }
+  function link(href, text) { return h("a", { href: href }, text); }
+
+  function showProfile(me, storedAt) {
+    root.classList.remove("error");
+    root.setAttribute("aria-busy", "false");
+    var phone = (me.businessPhones || [])[0];
+    var details = [].concat(
+      row("Email", me.mail ? link("mailto:" + me.mail, me.mail) : null),
+      row("Department", me.department),
+      row("Office", me.officeLocation),
+      row("Phone", phone ? link("tel:" + phone.replace(/[^\d+]/g, ""), phone) : null),
+      row("Mobile", me.mobilePhone ? link("tel:" + me.mobilePhone.replace(/[^\d+]/g, ""), me.mobilePhone) : null)
+    );
+    var when = storedAt ? new Date(storedAt) : new Date();
+    render([
+      h("div", { class: "head" }, [
+        h("div", { class: "avatar", id: "avatar", "aria-hidden": "true" }, initials(me)),
+        h("div", { class: "who" }, [h("h1", null, me.displayName || me.mail || "Unknown user"), me.jobTitle ? h("p", { class: "role" }, me.jobTitle) : null]),
+      ]),
+      details.length ? h("dl", null, details) : null,
+      h("div", { class: "foot" }, [
+        h("span", null, "Updated " + when.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })),
+        button("Refresh", function () { load(true); }),
+      ]),
+    ]);
+  }
+
+  async function call(refresh) {
+    var opts = refresh ? { cache: { refresh: true } } : undefined;
+    try { return await mcp.callTool(SERVER, "get_me", {}, opts); }
+    catch (e) {
+      if (e && e.retryable && (e.code === "server_unavailable" || e.code === "upstream_error")) {
+        await new Promise(function (r) { setTimeout(r, Math.min(e.retryAfterMs || 1000, 5000)); });
+        return await mcp.callTool(SERVER, "get_me", {}, opts);
+      }
+      throw e;
+    }
+  }
+
+  // get_my_photo returns an image block, or only a text block when no photo is set. The initials stay
+  // in place until the photo arrives, and if there's no photo or the call fails.
+  async function loadPhoto(refresh) {
+    try {
+      var result = await mcp.callTool(SERVER, "get_my_photo", {}, refresh ? { cache: { refresh: true } } : undefined);
+      var img = (result && result.content || []).filter(function (b) { return b && b.type === "image" && b.data; })[0];
+      var avatar = document.getElementById("avatar");
+      if (!img || !avatar) return;
+      var el = h("img", { alt: "", src: "data:" + (img.mimeType || "image/jpeg") + ";base64," + img.data });
+      el.addEventListener("load", function () { avatar.replaceChildren(el); });
+    } catch (e) {
+      console.warn("[profile-card] photo:", e && (e.message || e.code) || e);
+    }
+  }
+
+  async function load(refresh) {
+    root.setAttribute("aria-busy", "true");
+    try {
+      var result = await call(refresh);
+      var me = parseProfile(result);
+      if (!me || !me.id) throw { code: "upstream_error", message: "No profile was returned." };
+      showProfile(me, result.cache && result.cache.storedAt);
+      loadPhoto(refresh);
+    } catch (e) {
+      showError(e, true);
+    }
+  }
+
+  async function start() {
+    try { mcp = window.claude ? await window.claude.use("mcp") : null; } catch (e) { mcp = null; }
+    if (!mcp) {
+      showError({ message: "This page needs the Profile MCP server. Open it through the local dev server (node dev-server.mjs) or as the SharePoint web part." }, false);
+      return;
+    }
+    load(false);
+  }
+
+  start();
+})();
+</script>
+</body>
+</html>
