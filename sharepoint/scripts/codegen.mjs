@@ -6,32 +6,32 @@ const jsBanner = "// GENERATED from the repo sources by sharepoint/scripts/codeg
 export const banner = (ts) => (ts ? tsBanner : jsBanner);
 
 /**
- * teams-slack-style.html -> an ES module exporting
+ * An HTML page (one inline <script> at most) -> an ES module exporting
  *   markup:  the page with its styles and body but no <script> (written into the iframe)
  *   runPage(window, document, localStorage): the inline script, run against the iframe's window, document
  *            and timers so its DOM, storage, listeners and polling stay inside the iframe.
  */
 export function pageModule(html, { ts = false } = {}) {
   const scripts = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)];
-  if (scripts.length !== 1 || /\bsrc\s*=/.test(scripts[0][1])) {
-    throw new Error(`Expected exactly one inline <script> in teams-slack-style.html, found ${scripts.length}.`);
+  if (scripts.length > 1 || scripts.some((m) => /\bsrc\s*=/.test(m[1]))) {
+    throw new Error(`Expected at most one inline <script> (no src) in the page, found ${scripts.length}.`);
   }
   const styles = [...html.matchAll(/<style\b[^>]*>[\s\S]*?<\/style>/gi)].map((m) => m[0]).join("\n");
   const bodyMatch = /<body\b[^>]*>([\s\S]*)<\/body>/i.exec(html);
-  if (!bodyMatch) throw new Error("No <body> in teams-slack-style.html.");
+  if (!bodyMatch) throw new Error("No <body> in the page.");
   const body = bodyMatch[1].replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "").trim();
   const lang = /<html\b[^>]*\blang="([^"]+)"/i.exec(html)?.[1] || "en";
-  const title = /<title>([\s\S]*?)<\/title>/i.exec(html)?.[1].trim() || "Teams";
+  const title = /<title>([\s\S]*?)<\/title>/i.exec(html)?.[1].trim() || "Page";
   const markup = `<!doctype html><html lang="${lang}"><head><meta charset="utf-8">` +
     `<meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title>${styles}</head><body>${body}</body></html>`;
 
-  const sig = ts ? "(window: Window, document: Document, localStorage: Storage | null): void" : "(window, document, localStorage)";
+  const sig = ts ? "(window: Window, document: Document, localStorage?: Storage): void" : "(window, document, localStorage)";
   return banner(ts) +
     `export const markup${ts ? ": string" : ""} = ${JSON.stringify(markup)};\n\n` +
     `export function runPage${sig} {\n` +
     `var setTimeout = window.setTimeout.bind(window), clearTimeout = window.clearTimeout.bind(window),\n` +
     `    setInterval = window.setInterval.bind(window), clearInterval = window.clearInterval.bind(window);\n` +
-    `${scripts[0][2]}\n}\n`;
+    `${scripts[0]?.[2] ?? ""}\n}\n`;
 }
 
 /** shim/claude-shim.js -> an ES module exporting installClaudeShim, without auto-installing. */

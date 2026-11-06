@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hello World</title>
+<style>
+:root{--bg:#f7f7f8;--card:#ffffff;--text:#1f1f24;--muted:#5c5c66;--accent:#0f6cbd;--line:#e3e3e8}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){--bg:#17171c;--card:#212128;--text:#ececf1;--muted:#a3a3ad;--accent:#5aa9f0;--line:#33333c}
+}
+:root[data-theme="dark"]{--bg:#17171c;--card:#212128;--text:#ececf1;--muted:#a3a3ad;--accent:#5aa9f0;--line:#33333c}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--text);font:16px/1.5 "Segoe UI",system-ui,-apple-system,sans-serif;
+     display:grid;place-items:center;padding:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:32px;max-width:520px;width:100%;text-align:center}
+h1{margin:0 0 8px;font-size:32px;color:var(--accent)}
+p{margin:0;color:var(--muted)}
+#clock{margin-top:16px;font-variant-numeric:tabular-nums;color:var(--text)}
+</style>
+</head>
+<body>
+<main class="card">
+  <h1>Hello, world</h1>
+  <p>This page is running on SharePoint.</p>
+  <p id="clock" aria-live="off"></p>
+</main>
+<script>
+(function () {
+  var clock = document.getElementById("clock");
+  function tick() { clock.textContent = new Date().toLocaleString(); }
+  tick();
+  setInterval(tick, 1000);
+})();
+</script>
+</body>
+</html>

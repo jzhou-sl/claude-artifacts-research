@@ -1,7 +1,7 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/package-solution.schema.json",
   "solution": {
-    "name": "teams-slack-sharepoint",
+    "name": "intranet-html-pages",
     "id": "d3321034-2ae4-42f1-baa2-bc551702567b",
     "version": "1.0.0.0",
     "includeClientSideAssets": true,
@@ -15,10 +15,10 @@
     },
     "metadata": {
       "shortDescription": {
-        "default": "Teams, Slack-style"
+        "default": "Intranet HTML pages"
       },
       "longDescription": {
-        "default": "Browse Teams channels and chats and post as yourself, from a SharePoint page. Calls Microsoft Graph with the visitor's own sign-in."
+        "default": "HTML pages from the claude-artifacts-research repo, each packaged as its own SharePoint web part."
       },
       "screenshotPaths": [],
       "videoUrl": "",
@@ -26,44 +26,14 @@
     },
     "features": [
       {
-        "title": "Teams, Slack-style",
-        "description": "Adds the Teams, Slack-style web part.",
+        "title": "Intranet HTML pages",
+        "description": "Adds one web part per HTML page listed in pages.json.",
         "id": "217a244c-02b1-4a76-a9ff-62a8d0811cf5",
         "version": "1.0.0.0"
-      }
-    ],
-    "webApiPermissionRequests": [
-      {
-        "resource": "Microsoft Graph",
-        "scope": "User.Read"
-      },
-      {
-        "resource": "Microsoft Graph",
-        "scope": "People.Read"
-      },
-      {
-        "resource": "Microsoft Graph",
-        "scope": "Team.ReadBasic.All"
-      },
-      {
-        "resource": "Microsoft Graph",
-        "scope": "Channel.ReadBasic.All"
-      },
-      {
-        "resource": "Microsoft Graph",
-        "scope": "Chat.ReadWrite"
-      },
-      {
-        "resource": "Microsoft Graph",
-        "scope": "ChannelMessage.Send"
-      },
-      {
-        "resource": "Microsoft Graph",
-        "scope": "ChannelMessage.Read.All"
       }
     ]
   },
   "paths": {
-    "zippedPackage": "solution/teams-slack-sharepoint.sppkg"
+    "zippedPackage": "solution/intranet-html-pages.sppkg"
   }
 }

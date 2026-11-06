@@ -1,25 +1,24 @@
 {
-  "name": "teams-slack-sharepoint",
+  "name": "intranet-html-pages",
   "version": "0.0.1",
   "private": true,
   "engines": {
     "node": ">=22.14.0 <23.0.0 || >=24.0.0 <25.0.0 || >=26.0.0 <27.0.0"
   },
   "scripts": {
-    "prepare-page": "node scripts/prepare.mjs",
     "prebuild": "node scripts/prepare.mjs",
     "build": "heft test --clean --production && heft package-solution --production",
-    "clean": "heft clean",
     "prestart": "node scripts/prepare.mjs",
     "start": "heft start --clean",
+    "add-page": "node scripts/add-page.mjs",
+    "clean": "heft clean",
     "eject-webpack": "heft eject-webpack"
   },
   "dependencies": {
     "tslib": "2.3.1",
     "@microsoft/sp-core-library": "1.24.1",
     "@microsoft/sp-component-base": "1.24.1",
-    "@microsoft/sp-webpart-base": "1.24.1",
-    "@microsoft/sp-http": "1.24.1"
+    "@microsoft/sp-webpart-base": "1.24.1"
   },
   "devDependencies": {
     "@microsoft/eslint-plugin-spfx": "1.24.1",

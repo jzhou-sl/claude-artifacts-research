@@ -2,15 +2,15 @@
 // Local dev server: serves artifact HTML pages with a window.claude shim injected,
 // and bridges the shim's tool calls to real MCP servers listed in mcp.config.json.
 //
-//   GET  /                     -> teams-slack-style.html (shim injected)
+//   GET  /                     -> hello-world.html, or DEFAULT_PAGE (shim injected)
 //   GET  /<page>.html          -> any .html in this folder (shim injected)
 //   GET  /__claude-shim.js     -> the shim
 //   POST /__mcp/call           -> { server, tool, input } -> { ok, result } | { ok:false, error }
 //   GET  /__mcp/tools?server=  -> list tools (debugging)
 //   GET  /sharepoint           -> local SharePoint harness: runs the SPFx web part's mount code (see sharepoint/harness)
-//   POST /__sp/token           -> { scopes } -> { ok, token }: Graph token from `npm run login` (real config only)
+//   GET  /__sp/pages           -> the page registry (sharepoint/pages.json); /__sp/page.js?key= -> one page as a module
 //
-// Env: PORT (default 5173), DEFAULT_PAGE (default teams-slack-style.html)
+// Env: PORT (default 5173), DEFAULT_PAGE (default hello-world.html)
 
 import http from "node:http";
 import { readFile } from "node:fs/promises";
@@ -20,38 +20,27 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { resultError } from "./teams-core/result-error.js";
-import { pageModule, shimModule } from "./sharepoint/scripts/codegen.mjs";
+import { pageModule } from "./sharepoint/scripts/codegen.mjs";
+import { loadPages } from "./sharepoint/scripts/pages.mjs";
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT) || 5173;
 const HOST = "127.0.0.1";
-const DEFAULT_PAGE = process.env.DEFAULT_PAGE || "teams-slack-style.html";
+const DEFAULT_PAGE = process.env.DEFAULT_PAGE || "hello-world.html";
 const SHIM_PATH = path.join(ROOT, "shim", "claude-shim.js");
 const CONFIG_FILE = process.env.MCP_CONFIG || "mcp.config.json";
 const config = JSON.parse(await readFile(path.join(ROOT, CONFIG_FILE), "utf8"));
 const ALLOWED_ORIGINS = new Set([`http://127.0.0.1:${PORT}`, `http://localhost:${PORT}`]);
-// the harness's in-browser Graph mode needs real MSAL tokens, so it is only offered with the teams-mcp config
-const HAS_TEAMS_MCP = Object.values(config).some((e) => (e.args || []).some((a) => /teams-mcp[\\/]server\.js$/.test(a)));
 
 /* ---------- local SharePoint harness ---------- */
 // Like SharePoint Online: no inline script. Styles may be inline (the page's <style> goes into the iframe).
 const HARNESS_CSP = ["default-src 'self'", "script-src 'self'", "style-src 'self' 'unsafe-inline'", "img-src 'self' data: blob: https:",
-  "connect-src 'self' https://graph.microsoft.com", "frame-src 'self'", "object-src 'none'", "base-uri 'none'"].join("; ");
+  "connect-src 'self'", "frame-src 'self'", "object-src 'none'", "base-uri 'none'"].join("; ");
 // static modules the harness imports: path -> file (fixed set of folders, basename only)
 const HARNESS_STATIC = [
-  [/^\/teams-core\/([\w-]+\.js)$/, "teams-core"],
   [/^\/sharepoint\/host\/([\w-]+\.js)$/, "sharepoint/host"],
   [/^\/sharepoint\/harness\/([\w-]+\.(?:js|css))$/, "sharepoint/harness"],
 ];
-let authModule = null;
-async function graphToken(scopes) {
-  authModule ||= import("./teams-mcp/auth.js");
-  const auth = await authModule;
-  const allowed = new Set([...auth.BASE_SCOPES, auth.CHANNEL_READ]);
-  if (!Array.isArray(scopes) || !scopes.length || scopes.some((s) => !allowed.has(s))) throw new BridgeError("bad_request", "Unknown scopes");
-  try { return await auth.getToken(scopes); }
-  catch (e) { throw new BridgeError(e.code === "needs_reauth" ? "needs_reauth" : (e.code || "upstream_error"), e.message); }
-}
 
 /* ---------- MCP clients (lazy, reconnect after failure) ---------- */
 const clients = new Map(); // server name -> Promise<Client>
@@ -144,32 +133,23 @@ const server = http.createServer(async (req, res) => {
       const client = await getClient(name);
       return json(res, 200, { ok: true, server: name, tools: (await client.listTools()).tools.map((t) => ({ name: t.name, description: t.description })) });
     }
-    if (req.method === "POST" && url.pathname === "/__sp/token") {
-      // mints Graph tokens: same origin and JSON-only checks as /__mcp/call
-      const origin = req.headers.origin;
-      if (origin && !ALLOWED_ORIGINS.has(origin)) return json(res, 403, { ok: false, error: { code: "blocked_by_policy", message: `Origin ${origin} not allowed` } });
-      if (!/^application\/json/.test(req.headers["content-type"] || "")) return json(res, 415, { ok: false, error: { code: "bad_request", message: "JSON only" } });
-      if (!HAS_TEAMS_MCP) return json(res, 200, { ok: false, error: { code: "not_configured", message: "In-browser Graph mode needs the real config (npm run dev) and `npm run login`." } });
-      try {
-        const { scopes } = JSON.parse(await readBody(req));
-        return json(res, 200, { ok: true, token: await graphToken(scopes) });
-      } catch (e) {
-        const error = toErrorShape(e);
-        console.warn(`[harness] token -> ${error.code}: ${error.message}`);
-        return json(res, 200, { ok: false, error });
-      }
-    }
     if (req.method === "GET" && (url.pathname === "/sharepoint" || url.pathname === "/sharepoint/")) {
-      const html = (await readFile(path.join(ROOT, "sharepoint", "harness", "index.html"), "utf8"))
-        .replace("{{MODE}}", HAS_TEAMS_MCP ? "graph" : "bridge").replace("{{GRAPH}}", HAS_TEAMS_MCP ? "1" : "0");
+      const html = await readFile(path.join(ROOT, "sharepoint", "harness", "index.html"), "utf8");
       res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "content-security-policy": HARNESS_CSP });
       return res.end(html);
     }
-    if (req.method === "GET" && url.pathname === "/__sp/page.js") {
-      return send(res, 200, "text/javascript; charset=utf-8", pageModule(await readFile(path.join(ROOT, DEFAULT_PAGE), "utf8")));
+    // read pages.json per request, so edits to the registry or the pages show up on reload
+    if (req.method === "GET" && url.pathname === "/__sp/pages") {
+      try { return json(res, 200, { ok: true, pages: (await loadPages()).map(({ key, title, file }) => ({ key, title, file })) }); }
+      catch (e) { return json(res, 200, { ok: false, error: { code: "bad_request", message: e.message } }); }
     }
-    if (req.method === "GET" && url.pathname === "/__sp/shim.js") {
-      return send(res, 200, "text/javascript; charset=utf-8", shimModule(await readFile(SHIM_PATH, "utf8")));
+    if (req.method === "GET" && url.pathname === "/__sp/page.js") {
+      let page;
+      try { page = (await loadPages()).find((p) => p.key === url.searchParams.get("key")); }
+      catch (e) { return send(res, 500, "text/plain; charset=utf-8", e.message); }
+      if (!page) return send(res, 404, "text/plain", "Unknown page key");
+      try { return send(res, 200, "text/javascript; charset=utf-8", pageModule(await readFile(path.join(ROOT, page.file), "utf8"))); }
+      catch (e) { return send(res, 500, "text/plain; charset=utf-8", `${page.file}: ${e.message}`); }
     }
     if (req.method === "GET") {
       for (const [re, dir] of HARNESS_STATIC) {
