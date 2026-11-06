@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // teams-mcp: an MCP server (stdio) wrapping Microsoft Graph with delegated permissions.
-// Exposes the tool names and result shapes teams-slack-style.html expects (same as mock-mcp/).
+// Exposes the tool names and result shapes teams-slack-style.html expects (same as ../mock/).
 // The handlers live in ../teams-core/tools.js (shared with the SharePoint web part); this file adds
-// input schemas and MSAL Node auth. Sign in first with `npm run login`.
+// input schemas and MSAL Node auth. Sign in first with `node mcp/teams/login.js`.
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";

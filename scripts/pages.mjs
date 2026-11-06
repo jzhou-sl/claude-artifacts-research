@@ -1,7 +1,7 @@
-// The page registry (sharepoint/pages.json): one entry per HTML page, each built as its own web part.
+// The page registry (pages.json): one entry per HTML page, each built as its own web part.
 // Shared by prepare.mjs (SPFx build), add-page.mjs and dev-server.js (local harness).
 //
-//   { "file": "hello-world.html",            // relative to the repo root
+//   { "file": "web-parts/hello-world.html",  // relative to the repo root
 //     "id": "7c081f09-…",                    // the web part's permanent GUID: never change it once deployed
 //     "key": "helloWorld",                   // camelCase; names the generated folder, class and bundle
 //     "title": "Hello world",                // shown in the SharePoint toolbox
@@ -12,7 +12,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const SP_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-export const ROOT_DIR = path.resolve(SP_DIR, "..");
+export const ROOT_DIR = SP_DIR; // the SPFx project is the repo root
 export const PAGES_FILE = path.join(SP_DIR, "pages.json");
 
 const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

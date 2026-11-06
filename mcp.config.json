@@ -1,7 +1,7 @@
 {
   "Microsoft 365": {
     "command": "node",
-    "args": ["teams-mcp/server.js"],
+    "args": ["mcp/teams/server.js"],
     "env": {
       "GRAPH_TENANT_ID": "<your Directory (tenant) ID>",
       "GRAPH_CLIENT_ID": "<your Application (client) ID>"

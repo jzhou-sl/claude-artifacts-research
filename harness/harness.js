@@ -1,7 +1,7 @@
 // Local stand-in for a SharePoint page hosting the web parts (served by dev-server.js at /sharepoint).
 // Runs the same mount code (host/mount.js) and generated page modules as the SPFx bundle, under a strict CSP
 // with no inline script. Pick a web part from pages.json in the header; ?page=<key> selects one directly.
-import { mountPage } from "/sharepoint/host/mount.js";
+import { mountPage } from "/host/mount.js";
 
 const $ = (s) => document.querySelector(s);
 const root = document.documentElement;

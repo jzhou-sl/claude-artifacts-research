@@ -1,5 +1,5 @@
-// Registers an HTML page as a new web part:  npm run add-page -- <file> "<title>" ["<description>"]
-//   <file> is relative to the repo root, e.g. my-page.html or pages/news.html
+// Registers an HTML page as a new web part:  node scripts/add-page.mjs <file> "<title>" ["<description>"]
+//   <file> is relative to the repo root, e.g. web-parts/my-page.html
 // Checks the page can be packaged, gives it a new permanent GUID and appends it to pages.json.
 import { readFile, writeFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
@@ -9,7 +9,7 @@ import { ROOT_DIR, PAGES_FILE, loadPages, keyFromFile } from "./pages.mjs";
 
 const [file, title, description = ""] = process.argv.slice(2);
 const fail = (msg) => { console.error(`[add-page] ${msg}`); process.exit(1); };
-if (!file || !title) fail('Usage: npm run add-page -- <file relative to repo root> "<title>" ["<description>"]');
+if (!file || !title) fail('Usage: node scripts/add-page.mjs <file relative to repo root> "<title>" ["<description>"]');
 
 const rel = path.relative(ROOT_DIR, path.resolve(ROOT_DIR, file)).split(path.sep).join("/");
 if (rel.startsWith("..")) fail(`${file} is outside the repo.`);

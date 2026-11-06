@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // Sign in (or out) for teams-mcp.
-//   npm run login                 sign in with the base scopes (browser, auth code + PKCE)
-//   npm run login -- --channels   also try ChannelMessage.Read.All (needs admin consent in most tenants)
-//   npm run logout                remove cached accounts
+//   node mcp/teams/login.js              sign in with the base scopes (browser, auth code + PKCE)
+//   node mcp/teams/login.js --channels   also try ChannelMessage.Read.All (needs admin consent in most tenants)
+//   node mcp/teams/login.js --logout     remove cached accounts
 import { spawn } from "node:child_process";
 import { rm } from "node:fs/promises";
 import { getPca, BASE_SCOPES, CHANNEL_READ, CACHE_PATH } from "./auth.js";
@@ -54,7 +54,7 @@ try {
     }
   } else {
     console.log(`\nChannel messages need ${CHANNEL_READ} (admin consent). If it's already granted for the app, it will work automatically;`);
-    console.log("otherwise run `npm run login -- --channels` to request it.");
+    console.log("otherwise run `node mcp/teams/login.js --channels` to request it.");
   }
   process.exit(0);
 } catch (e) {

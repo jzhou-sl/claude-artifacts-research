@@ -19,9 +19,9 @@ function loadConfig() {
   let tenantId = process.env.GRAPH_TENANT_ID, clientId = process.env.GRAPH_CLIENT_ID;
   if (!tenantId || !clientId) {
     try {
-      const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+      const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
       const cfg = JSON.parse(readFileSync(path.join(root, process.env.MCP_CONFIG || "mcp.config.json"), "utf8"));
-      const entry = Object.values(cfg).find((e) => (e.args || []).some((a) => /teams-mcp[\\/]server\.js$/.test(a)));
+      const entry = Object.values(cfg).find((e) => (e.args || []).some((a) => /mcp[\\/]teams[\\/]server\.js$/.test(a)));
       tenantId ||= entry?.env?.GRAPH_TENANT_ID; clientId ||= entry?.env?.GRAPH_CLIENT_ID;
     } catch { /* fall through to validation */ }
   }
@@ -61,11 +61,11 @@ export async function getAccount() {
   return accounts[0] || null;
 }
 
-/** Silent token for the given scopes. Never prompts: run `npm run login` to sign in. */
+/** Silent token for the given scopes. Never prompts: run `node mcp/teams/login.js` to sign in. */
 export async function getToken(scopes) {
   const pca = await getPca();
   const account = await getAccount();
-  if (!account) throw new AuthError("needs_reauth", "Not signed in to Microsoft Graph. Run `npm run login`, then reload the page.");
+  if (!account) throw new AuthError("needs_reauth", "Not signed in to Microsoft Graph. Run `node mcp/teams/login.js`, then reload the page.");
   try {
     const r = await pca.acquireTokenSilent({ account, scopes });
     return r.accessToken;
@@ -73,9 +73,9 @@ export async function getToken(scopes) {
     if (e instanceof InteractionRequiredAuthError || /interaction_required|invalid_grant|consent_required/i.test(e?.errorCode || "")) {
       if (scopes.includes(CHANNEL_READ)) {
         throw new AuthError("consent_missing",
-          `Reading channel messages needs the ${CHANNEL_READ} permission, which requires admin consent in most tenants. Ask an admin to grant it to the app, or run \`npm run login -- --channels\` if you're allowed to consent.`, CHANNEL_READ);
+          `Reading channel messages needs the ${CHANNEL_READ} permission, which requires admin consent in most tenants. Ask an admin to grant it to the app, or run \`node mcp/teams/login.js --channels\` if you're allowed to consent.`, CHANNEL_READ);
       }
-      throw new AuthError("needs_reauth", "Your Microsoft sign-in has expired or needs consent. Run `npm run login`, then reload the page.");
+      throw new AuthError("needs_reauth", "Your Microsoft sign-in has expired or needs consent. Run `node mcp/teams/login.js`, then reload the page.");
     }
     throw e;
   }

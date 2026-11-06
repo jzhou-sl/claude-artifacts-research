@@ -3,12 +3,12 @@
 // and bridges the shim's tool calls to real MCP servers listed in mcp.config.json.
 //
 //   GET  /                     -> hello-world.html, or DEFAULT_PAGE (shim injected)
-//   GET  /<page>.html          -> any .html in this folder (shim injected)
+//   GET  /<page>.html          -> any .html in web-parts/ (shim injected)
 //   GET  /__claude-shim.js     -> the shim
 //   POST /__mcp/call           -> { server, tool, input } -> { ok, result } | { ok:false, error }
 //   GET  /__mcp/tools?server=  -> list tools (debugging)
-//   GET  /sharepoint           -> local SharePoint harness: runs the SPFx web part's mount code (see sharepoint/harness)
-//   GET  /__sp/pages           -> the page registry (sharepoint/pages.json); /__sp/page.js?key= -> one page as a module
+//   GET  /sharepoint           -> local SharePoint harness: runs the SPFx web part's mount code (see harness/)
+//   GET  /__sp/pages           -> the page registry (pages.json); /__sp/page.js?key= -> one page as a module
 //
 // Env: PORT (default 5173), DEFAULT_PAGE (default hello-world.html)
 
@@ -19,15 +19,16 @@ import { fileURLToPath } from "node:url";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import { resultError } from "./teams-core/result-error.js";
-import { pageModule } from "./sharepoint/scripts/codegen.mjs";
-import { loadPages } from "./sharepoint/scripts/pages.mjs";
+import { resultError } from "./mcp/teams-core/result-error.js";
+import { pageModule } from "./scripts/codegen.mjs";
+import { loadPages } from "./scripts/pages.mjs";
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT) || 5173;
 const HOST = "127.0.0.1";
 const DEFAULT_PAGE = process.env.DEFAULT_PAGE || "hello-world.html";
-const SHIM_PATH = path.join(ROOT, "shim", "claude-shim.js");
+const SHIM_PATH = path.join(ROOT, "claude-shim.js");
+const PAGES_DIR = path.join(ROOT, "web-parts");
 const CONFIG_FILE = process.env.MCP_CONFIG || "mcp.config.json";
 const config = JSON.parse(await readFile(path.join(ROOT, CONFIG_FILE), "utf8"));
 const ALLOWED_ORIGINS = new Set([`http://127.0.0.1:${PORT}`, `http://localhost:${PORT}`]);
@@ -38,8 +39,8 @@ const HARNESS_CSP = ["default-src 'self'", "script-src 'self'", "style-src 'self
   "connect-src 'self'", "frame-src 'self'", "object-src 'none'", "base-uri 'none'"].join("; ");
 // static modules the harness imports: path -> file (fixed set of folders, basename only)
 const HARNESS_STATIC = [
-  [/^\/sharepoint\/host\/([\w-]+\.js)$/, "sharepoint/host"],
-  [/^\/sharepoint\/harness\/([\w-]+\.(?:js|css))$/, "sharepoint/harness"],
+  [/^\/host\/([\w-]+\.js)$/, "host"],
+  [/^\/harness\/([\w-]+\.(?:js|css))$/, "harness"],
 ];
 
 /* ---------- MCP clients (lazy, reconnect after failure) ---------- */
@@ -134,7 +135,7 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { ok: true, server: name, tools: (await client.listTools()).tools.map((t) => ({ name: t.name, description: t.description })) });
     }
     if (req.method === "GET" && (url.pathname === "/sharepoint" || url.pathname === "/sharepoint/")) {
-      const html = await readFile(path.join(ROOT, "sharepoint", "harness", "index.html"), "utf8");
+      const html = await readFile(path.join(ROOT, "harness", "index.html"), "utf8");
       res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "content-security-policy": HARNESS_CSP });
       return res.end(html);
     }
@@ -166,7 +167,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "GET" && (url.pathname === "/" || /^\/[\w.-]+\.html$/.test(url.pathname))) {
       const file = url.pathname === "/" ? DEFAULT_PAGE : url.pathname.slice(1);
       let html;
-      try { html = await readFile(path.join(ROOT, path.basename(file)), "utf8"); } catch { return send(res, 404, "text/plain", "Not found"); }
+      try { html = await readFile(path.join(PAGES_DIR, path.basename(file)), "utf8"); } catch { return send(res, 404, "text/plain", "Not found"); }
       return send(res, 200, "text/html; charset=utf-8", injectShim(html));
     }
     if (url.pathname === "/favicon.ico") { res.writeHead(204); return res.end(); }

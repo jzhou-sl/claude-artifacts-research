@@ -1,6 +1,6 @@
 // Teams tool handlers over Microsoft Graph, environment-neutral (Node MCP server and SharePoint web part).
 // createTools({ graph, graphPages, messages? }) -> { [name]: { description, annotations, handler(args) -> CallToolResult } }
-// Input validation lives with the caller (zod in teams-mcp/server.js); handlers apply the same defaults.
+// Input validation lives with the caller (zod in mcp/teams/server.js); handlers apply the same defaults.
 import { AuthError, CHANNEL_READ } from "./errors.js";
 import { GraphError, seg } from "./graph.js";
 import * as map from "./map.js";
@@ -18,7 +18,7 @@ export const SCOPES = {
 
 /** Host-specific wording for errors the user has to act on. */
 export const NODE_MESSAGES = {
-  graph401: "Microsoft Graph rejected the sign-in. Run `npm run login`, then reload.",
+  graph401: "Microsoft Graph rejected the sign-in. Run `node mcp/teams/login.js`, then reload.",
   graph403Hint: "Check the app registration's API permissions and admin consent.",
 };
 
