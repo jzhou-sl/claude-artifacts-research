@@ -24,6 +24,22 @@ let pages;
 try { pages = await loadPages(); }
 catch (e) { console.error(`[prepare] ${e.message}`); process.exit(1); }
 
+// `npm start` passes --serve and loads .env: SPFX_WEB_PARTS (comma-separated keys or file names from
+// pages.json, e.g. "helloWorld, profile-card") limits which web parts are generated and bundled.
+// Unset or empty means all of them. `npm run build` ignores it, so the package always has every page.
+const only = process.argv.includes("--serve")
+  ? (process.env.SPFX_WEB_PARTS ?? "").split(",").map((s) => s.trim()).filter(Boolean)
+  : [];
+if (only.length) {
+  const matches = (p, name) => p.key === name || p.file === name || path.basename(p.file, path.extname(p.file)) === name;
+  const unknown = only.filter((name) => !pages.some((p) => matches(p, name)));
+  if (unknown.length) {
+    console.error(`[prepare] SPFX_WEB_PARTS: not in pages.json: ${unknown.join(", ")}. Known: ${pages.map((p) => p.key).join(", ")}`);
+    process.exit(1);
+  }
+  pages = pages.filter((p) => only.some((name) => matches(p, name)));
+}
+
 await rm(GENERATED, { recursive: true, force: true });
 await rm(WEBPARTS, { recursive: true, force: true });
 await mkdir(path.join(GENERATED, "pages"), { recursive: true });
